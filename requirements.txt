@@ -1,0 +1,6 @@
+streamlit>=1.35
+pandas>=2.0
+# Optional: only needed for Live mode (Gemini) and the Pinecone store in Session 3
+langchain>=1.0
+langchain-google-genai>=4.0
+pinecone>=5.0
