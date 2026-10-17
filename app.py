@@ -1,5 +1,5 @@
 """
-Agents Course Lab: ONE app that connects all four sessions.
+Agents Course Lab: ONE app that connects all five sessions.
 
     streamlit run app.py
 
@@ -7,6 +7,7 @@ Session 1  Foundations of Agents          (session1_foundations/app.py)
 Session 2  Building Blocks of Agents      (session2_building_blocks/app.py)
 Session 3  Memory in AI Agents            (session3_memory/app.py)
 Session 4  Agent Architectures & Patterns (session4_architecture/app.py)
+Session 5  Intro to Multi-Agent Systems   (session5_multi_agent/app.py)
 
 This file is a thin hub. It does not copy any session code: it runs the chosen session's own app.py, and
 gives every session its own saved state, so switching sessions never mixes their pages, widgets or data.
@@ -43,6 +44,10 @@ SESSIONS = {
            "question": "How much thinking does each moment need, and who decides?",
            "story": "The night the agent thought too hard. Deliberative, reactive, BDI, layered and CoALA architectures; planning, ReAct, tool use, reflection.",
            "labs": "Plan checking · reflexes · BDI commitment · orchestrator · CoALA scoring · planning vs ReAct · reflection · capstone"},
+    "S5": {"label": "🤝 Session 5 · Intro to Multi-Agent Systems", "folder": "session5_multi_agent",
+           "question": "When one agent is not enough, who decides and who talks to whom?",
+           "story": "The honeymoon request one agent could only skim. Why teams, centralized vs decentralized vs hybrid, and four design patterns, with the cost of each.",
+           "labs": "Generalist vs specialists · three C's · coordinator down · stale status board · hybrid rebooking · manager's missing requirement · swarm races · federated report format · pipeline error propagation · call costs"},
 }
 LABEL_TO_KEY = {v["label"]: k for k, v in SESSIONS.items()}
 OPTIONS = [HOME] + [v["label"] for v in SESSIONS.values()]
@@ -151,7 +156,7 @@ def run_session(key: str):
     folder = ROOT / SESSIONS[key]["folder"]
     entry = folder / "app.py"
     if not entry.exists():
-        st.error("Could not find %s. Keep the four session folders next to this app.py." % entry)
+        st.error("Could not find %s. Keep the five session folders next to this app.py." % entry)
         return
     own = [str(ROOT / v["folder"]) for v in SESSIONS.values()]
     sys.path[:] = [p for p in sys.path if p not in own]
@@ -192,15 +197,23 @@ CONCEPTS = [
     ("Learning from feedback", "The weights never change; lessons are stored and put back into the prompt.",
      [("S1", 3, "Learning agents"), ("S2", 7, "Learning agent"), ("S3", 6, "Procedural memory"), ("S4", 9, "Reflection")]),
     ("Types and architectures of agents", "Reflex, model-based, goal, utility, learning; then deliberative, reactive, BDI, layered, CoALA.",
-     [("S1", 3, "Evolution of agents"), ("S2", 7, "Five types"), ("S4", 3, "Reactive"), ("S4", 4, "BDI"), ("S4", 7, "Choosing an architecture")]),
+     [("S1", 3, "Evolution of agents"), ("S2", 7, "Five types"), ("S4", 3, "Reactive"), ("S4", 4, "BDI"), ("S4", 7, "Choosing an architecture"), ("S5", 7, "Choosing a MAS architecture")]),
     ("Workflow or agent?", "If you can picture the steps, use a workflow; if not, an agent. Then choose how much thinking each moment needs.",
-     [("S1", 5, "Why agents, why not always"), ("S1", 6, "Four workflow patterns"), ("S1", 7, "Workflow or agent?"), ("S4", 7, "Choosing an architecture")]),
+     [("S1", 5, "Why agents, why not always"), ("S1", 6, "Four workflow patterns"), ("S1", 7, "Workflow or agent?"), ("S4", 7, "Choosing an architecture"), ("S5", 2, "Single agent or a team?")]),
     ("Safety, privacy and control", "Injection, approval gates, step limits, wrong memories and user isolation.",
-     [("S2", 9, "Safety & meta-control"), ("S3", 7, "When memory goes wrong"), ("S4", 10, "Capstone")]),
+     [("S2", 9, "Safety & meta-control"), ("S3", 7, "When memory goes wrong"), ("S4", 10, "Capstone"), ("S5", 11, "Checkers stop error propagation")]),
     ("Evaluating an agent", "Check output against a source or a rubric; remember that a judge is another model.",
-     [("S1", 8, "Grounding check"), ("S2", 10, "Grading against PEAS"), ("S3", 7, "Memory audit")]),
+     [("S1", 8, "Grounding check"), ("S2", 10, "Grading against PEAS"), ("S3", 7, "Memory audit"), ("S5", 8, "Check the plan's coverage")]),
     ("Perception: language into structure", "Structured output turns messy language into a dictionary your code can route on.",
      [("S1", 3, "Rule-based vs LLM understanding"), ("S2", 2, "Perception & Hinglish")]),
+    ("One agent or a team?", "A team buys specialisation, parallelism and robustness, and pays in calls, latency and coordination. Use one agent when the problem is small, centralised and stable.",
+     [("S5", 1, "Generalist vs specialists"), ("S5", 2, "Why a team, and when not"), ("S5", 12, "What a team costs")]),
+    ("Who decides? MAS architectures", "Centralized (one controller), decentralized (peers decide locally) or hybrid (central plan, local execution).",
+     [("S5", 4, "Centralized"), ("S5", 5, "Decentralized"), ("S5", 6, "Hybrid"), ("S5", 7, "Choosing")]),
+    ("Who talks to whom? MAS design patterns", "Manager/worker, peer/swarm, federated teams and sequential pipeline: reusable interaction blueprints, each with its own failure mode.",
+     [("S5", 8, "Manager / worker"), ("S5", 9, "Peer / swarm"), ("S5", 10, "Federated teams"), ("S5", 11, "Pipeline")]),
+    ("Communication, coordination, collaboration", "Agents need a shared message format, a way to avoid duplicate or clashing work, and a way to combine partial results.",
+     [("S5", 3, "The three C's"), ("S5", 10, "A shared report format")]),
 ]
 
 GLOSSARY = [
@@ -222,20 +235,28 @@ GLOSSARY = [
     ("Design pattern", "A proven technique inside an architecture: planning, ReAct, tool use, reflection", "S4"),
     ("Orchestrator", "Routes each message to the right amount of thinking", "S4"),
     ("Reflection", "A critic loop that checks and improves the agent's own output", "S4"),
+    ("Multi-agent system (MAS)", "Several autonomous agents that collaborate or compete; system behaviour emerges from their interactions", "S5"),
+    ("Three C's", "Communication, coordination, collaboration", "S5"),
+    ("Centralized / decentralized / hybrid", "One controller decides / peers decide locally / central plan with local execution", "S5"),
+    ("Manager / worker", "A manager delegates tasks to specialised workers and integrates the results", "S5"),
+    ("Peer / swarm", "Equal agents following simple local rules, coordinating through a shared board", "S5"),
+    ("Federated teams", "Specialist teams working independently, joined by a shared report format", "S5"),
+    ("Sequential pipeline", "Agents in a fixed order; each stage's output is the next stage's input", "S5"),
+    ("Emergent behaviour", "System-level behaviour no single agent was programmed to produce", "S5"),
 ]
 
 
 def hub_home():
     st.title("🎓 Agents Course Lab")
-    st.caption("One app for all four sessions of *Agents*. Pick a session on the left, or open one from here.")
-    st.warning("**📖 The thread through all four sessions.** Prasad's concierge could talk but not act (Session 1). So he gave it parts and a job description (Session 2), "
-               "a memory it could trust (Session 3), and an architecture that decides how much to think (Session 4).")
+    st.caption("One app for all five sessions of *Agents*. Pick a session on the left, or open one from here.")
+    st.warning("**📖 The thread through all five sessions.** Prasad's concierge could talk but not act (Session 1). So he gave it parts and a job description (Session 2), "
+               "a memory it could trust (Session 3), and an architecture that decides how much to think (Session 4). When the work outgrew one agent, he built a team (Session 5).")
     st.success("**One question to hold on to:** who decides the next step, and how much thinking does this moment need? Every lab in the course is a variation on it.")
     tabs = st.tabs(["Course map", "Concept map", "Glossary", "Course quiz", "How to run"])
 
     with tabs[0]:
         dot = ('digraph { rankdir=LR; ' + NODE + ' S1 [label="Session 1\\nFoundations\\nWhy it must act", fillcolor="#d0ebff"]; S2 [label="Session 2\\nBuilding blocks\\nWhat it is made of", fillcolor="#d3f9d8"]; '
-               'S3 [label="Session 3\\nMemory\\nWhat it remembers", fillcolor="#fff3bf"]; S4 [label="Session 4\\nArchitectures\\nHow it thinks", fillcolor="#ffe3e3"]; S1 -> S2 -> S3 -> S4; }')
+               'S3 [label="Session 3\\nMemory\\nWhat it remembers", fillcolor="#fff3bf"]; S4 [label="Session 4\\nArchitectures\\nHow it thinks", fillcolor="#ffe3e3"]; S5 [label="Session 5\\nMulti-agent\\nWho works together", fillcolor="#e5dbff"]; S1 -> S2 -> S3 -> S4 -> S5; }')
         st.graphviz_chart(dot)
         for key, s in SESSIONS.items():
             with st.container(border=True):
@@ -273,7 +294,7 @@ def hub_home():
         st.dataframe(pd.DataFrame(rows), hide_index=True)
 
     with tabs[3]:
-        st.write("Ten questions across the whole course.")
+        st.write("Twelve questions across the whole course.")
         items = [
             ("Who decides the next step in a workflow? In an agent?", ["Workflow: the model. Agent: your code", "Workflow: your code. Agent: the model", "Both: the model"], 1, "Workflow: your code fixes the order. Agent: the model picks the next action."),
             ("A model returns a tool call. What has happened?", ["The function ran", "The model requested it; your code decides whether to run it", "The function was trained into the model"], 1, "Nothing runs until your code runs it (S1)."),
@@ -285,6 +306,8 @@ def hub_home():
             ("An emergency message needs an instant answer. Which layer should handle it?", ["Deliberative planning", "A reactive reflex", "A reflection loop"], 1, "S4: match thinking to the moment."),
             ("If each step is 95% reliable, a 10-step agent run is right about...", ["95%", "80%", "60%"], 2, "S1: 0.95^10 ≈ 0.60."),
             ("A step limit exists to...", ["Speed up the agent", "Stop runaway loops, then escalate or return a partial answer", "Shorten answers"], 1, "S1 and S2."),
+            ("A centralized desk's coordinator crashes while all specialists are healthy. What happens?", ["They carry on as before", "No query is answered: a single point of failure", "Only the cheapest are answered"], 1, "S5: that is why hybrid and decentralized designs exist."),
+            ("A manager's plan says 'leave insurance aside' and a keyword check passes it. What should you check instead?", ["The word count", "That every requirement has a named owner", "Nothing"], 1, "S5: a word in a task is not an owner."),
         ]
         picks = [st.radio("**%d. %s**" % (i + 1, q), o, index=None, key="hub_quiz_%d" % i) for i, (q, o, _, _) in enumerate(items)]
         if st.button("Check my answers", key="hub_quiz_check", type="primary"):
