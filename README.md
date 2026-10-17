@@ -1,4 +1,4 @@
-# Agents Course Lab: five interactive Streamlit apps
+# Agents Course Lab: six interactive Streamlit apps
 
 | Session | Folder | What it teaches |
 |---|---|---|
@@ -7,12 +7,13 @@
 | 3 | `session3_memory/` | Short- and long-term memory, forgetting, CoALA kinds, risks |
 | 4 | `session4_architecture/` | Architectures and patterns |
 | 5 | `session5_multi_agent/` | Multi-agent systems: why a team, centralized / decentralized / hybrid, four design patterns, what a team costs |
+| 6 | `session6_building_mas/` | Building multi-agent systems: a ReAct agent with tool and memory, centralized / decentralized / hybrid support desks, LangChain vs CrewAI (crew, agent, task, sequential and hierarchical process) |
 
 ## Run
 
 ```bash
 pip install -r requirements.txt
-streamlit run app.py                      # the hub: one app that connects all five sessions
+streamlit run app.py                      # the hub: one app that connects all six sessions
 streamlit run session1_foundations/app.py # or any session on its own
 ```
 
