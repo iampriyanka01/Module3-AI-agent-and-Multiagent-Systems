@@ -51,8 +51,8 @@ SESSIONS = {
            "labs": "Generalist vs specialists · three C's · coordinator down · stale status board · hybrid rebooking · manager's missing requirement · swarm races · federated report format · pipeline error propagation · call costs"},
     "S6": {"label": "🛠️ Session 6 · Building MAS (LangChain & CrewAI)", "folder": "session6_building_mas",
            "question": "How do you build the team you drew, and what does a framework do for you?",
-           "story": "Prasad builds his support desk three ways, then rewrites a research-and-blog team in CrewAI. Centralized, decentralized and hybrid desks; crews, agents, tasks and processes.",
-           "labs": "ReAct agent with tool and memory · centralized desk · decentralized loop and hop limit · hybrid peers · three designs compared (and what each survives) · LangChain vs CrewAI checklist · crew builder · sequential context · manager_llm vs manager_agent"},
+           "story": "Prasad takes LangChain apart, builds his support desk three ways (notebook 6A), then describes a team in CrewAI and reads the exact prompts it writes (notebook 6B).",
+           "labs": "How LangChain works (message list, tools from docstrings, step limit, old vs new code) · ReAct agent with tool and memory · centralized desk with agents as tools · decentralized 'is this mine?' and six approaches · hybrid router, peer question and refund in code · scoreboard · LangChain vs CrewAI · how CrewAI works (recorded prompts) · crew builder · sequential context · hierarchical manager (no tools) · allow_delegation"},
 }
 LABEL_TO_KEY = {v["label"]: k for k, v in SESSIONS.items()}
 OPTIONS = [HOME] + [v["label"] for v in SESSIONS.values()]
@@ -192,13 +192,13 @@ NODE = 'node [shape=box, style="rounded,filled", fillcolor="#eef2ff", fontname="
 
 CONCEPTS = [
     ("The agent loop (perceive → reason → act → feedback)", "The same loop appears in every session; only the question changes: who decides the next step?",
-     [("S1", 2, "What an agent is"), ("S1", 4, "Tools & the loop"), ("S2", 5, "Tools & orchestrator"), ("S4", 8, "Planning vs ReAct"), ("S6", 1, "A ReAct agent in LangChain")]),
+     [("S1", 2, "What an agent is"), ("S1", 4, "Tools & the loop"), ("S2", 5, "Tools & orchestrator"), ("S4", 8, "Planning vs ReAct"), ("S6", 2, "A ReAct agent in LangChain")]),
     ("Tools and tool calling", "A tool is a function with a clear name, type hints and docstring. The model only requests; your code runs it.",
-     [("S1", 4, "Giving the concierge hands"), ("S2", 5, "Tools & orchestrator"), ("S4", 9, "Tool use & reflection"), ("S6", 1, "A search tool in a LangChain agent")]),
+     [("S1", 4, "Giving the concierge hands"), ("S2", 5, "Tools & orchestrator"), ("S4", 9, "Tool use & reflection"), ("S6", 2, "A search tool in a LangChain agent"), ("S6", 1, "How a function becomes a tool")]),
     ("Planning", "Break a goal into steps, then replan when reality disagrees.",
      [("S1", 3, "Deliberative agents"), ("S2", 4, "Planning & ReAct"), ("S4", 2, "Deliberative architecture"), ("S4", 8, "Planning vs ReAct")]),
     ("Memory", "An LLM remembers nothing: memory is what your code writes down and puts back into the prompt.",
-     [("S1", 3, "Memory as a message list"), ("S2", 3, "Short- and long-term memory"), ("S3", 3, "Short-term memory lab"), ("S3", 4, "Long-term lifecycle"), ("S4", 6, "CoALA memory"), ("S6", 1, "Chat memory: a follow-up fails without it")]),
+     [("S1", 3, "Memory as a message list"), ("S2", 3, "Short- and long-term memory"), ("S3", 3, "Short-term memory lab"), ("S3", 4, "Long-term lifecycle"), ("S4", 6, "CoALA memory"), ("S6", 2, "Chat memory: a follow-up fails without it"), ("S6", 1, "Memory = the message list")]),
     ("Learning from feedback", "The weights never change; lessons are stored and put back into the prompt.",
      [("S1", 3, "Learning agents"), ("S2", 7, "Learning agent"), ("S3", 6, "Procedural memory"), ("S4", 9, "Reflection")]),
     ("Types and architectures of agents", "Reflex, model-based, goal, utility, learning; then deliberative, reactive, BDI, layered, CoALA.",
@@ -206,21 +206,21 @@ CONCEPTS = [
     ("Workflow or agent?", "If you can picture the steps, use a workflow; if not, an agent. Then choose how much thinking each moment needs.",
      [("S1", 5, "Why agents, why not always"), ("S1", 6, "Four workflow patterns"), ("S1", 7, "Workflow or agent?"), ("S4", 7, "Choosing an architecture"), ("S5", 2, "Single agent or a team?")]),
     ("Safety, privacy and control", "Injection, approval gates, step limits, wrong memories and user isolation.",
-     [("S2", 9, "Safety & meta-control"), ("S3", 7, "When memory goes wrong"), ("S4", 10, "Capstone"), ("S5", 11, "Checkers stop error propagation"), ("S6", 5, "What each design survives")]),
+     [("S2", 9, "Safety & meta-control"), ("S3", 7, "When memory goes wrong"), ("S4", 10, "Capstone"), ("S5", 11, "Checkers stop error propagation"), ("S6", 6, "What each design survives")]),
     ("Evaluating an agent", "Check output against a source or a rubric; remember that a judge is another model.",
-     [("S1", 8, "Grounding check"), ("S2", 10, "Grading against PEAS"), ("S3", 7, "Memory audit"), ("S5", 8, "Check the plan's coverage"), ("S6", 9, "A manager that checks expected_output")]),
+     [("S1", 8, "Grounding check"), ("S2", 10, "Grading against PEAS"), ("S3", 7, "Memory audit"), ("S5", 8, "Check the plan's coverage"), ("S6", 11, "A manager that checks expected_output")]),
     ("Perception: language into structure", "Structured output turns messy language into a dictionary your code can route on.",
      [("S1", 3, "Rule-based vs LLM understanding"), ("S2", 2, "Perception & Hinglish")]),
     ("One agent or a team?", "A team buys specialisation, parallelism and robustness, and pays in calls, latency and coordination. Use one agent when the problem is small, centralised and stable.",
      [("S5", 1, "Generalist vs specialists"), ("S5", 2, "Why a team, and when not"), ("S5", 12, "What a team costs")]),
     ("Who decides? MAS architectures", "Centralized (one controller), decentralized (peers decide locally) or hybrid (central plan, local execution).",
-     [("S5", 4, "Centralized"), ("S5", 5, "Decentralized"), ("S5", 6, "Hybrid"), ("S5", 7, "Choosing"), ("S6", 2, "Centralized desk, built"), ("S6", 3, "Decentralized desk, built"), ("S6", 4, "Hybrid desk, built"), ("S6", 5, "The three compared")]),
+     [("S5", 4, "Centralized"), ("S5", 5, "Decentralized"), ("S5", 6, "Hybrid"), ("S5", 7, "Choosing"), ("S6", 3, "Centralized desk, built"), ("S6", 4, "Decentralized desk, built"), ("S6", 5, "Hybrid desk, built"), ("S6", 6, "The three compared")]),
     ("Who talks to whom? MAS design patterns", "Manager/worker, peer/swarm, federated teams and sequential pipeline: reusable interaction blueprints, each with its own failure mode.",
-     [("S5", 8, "Manager / worker"), ("S5", 9, "Peer / swarm"), ("S5", 10, "Federated teams"), ("S5", 11, "Pipeline"), ("S6", 5, "Patterns vs architectures"), ("S6", 8, "CrewAI sequential"), ("S6", 9, "CrewAI hierarchical")]),
+     [("S5", 8, "Manager / worker"), ("S5", 9, "Peer / swarm"), ("S5", 10, "Federated teams"), ("S5", 11, "Pipeline"), ("S6", 6, "Patterns vs architectures"), ("S6", 10, "CrewAI sequential"), ("S6", 11, "CrewAI hierarchical"), ("S6", 12, "Peer collaboration in CrewAI")]),
     ("Communication, coordination, collaboration", "Agents need a shared message format, a way to avoid duplicate or clashing work, and a way to combine partial results.",
      [("S5", 3, "The three C's"), ("S5", 10, "A shared report format")]),
     ("Frameworks for agent teams (LangChain vs CrewAI)", "LangChain supplies the parts for one agent; CrewAI adds roles, tasks, hand-offs and processes for a team. A framework takes over the coordination code, not the responsibility for checking answers.",
-     [("S6", 6, "Why a framework?"), ("S6", 7, "Crew, Agent, Task, Process"), ("S6", 8, "Sequential and context"), ("S6", 9, "Hierarchical and the manager")]),
+     [("S6", 7, "Why a framework?"), ("S6", 9, "Crew, Agent, Task, Process"), ("S6", 10, "Sequential and context"), ("S6", 11, "Hierarchical and the manager"), ("S6", 1, "How LangChain works"), ("S6", 8, "How CrewAI works (recorded prompts)"), ("S6", 12, "allow_delegation")]),
 ]
 
 GLOSSARY = [
@@ -257,6 +257,13 @@ GLOSSARY = [
     ("Sequential / hierarchical process", "Tasks run in a fixed order / a manager delegates and can check the work", "S6"),
     ("manager_llm vs manager_agent", "A model acting as manager (lighter) vs a full agent with role, instructions and tools (can verify work)", "S6"),
     ("Hop limit", "The maximum number of times a query may be forwarded between peers before it stops: it prevents endless loops", "S6"),
+    ("create_agent", "LangChain 1.x: wires a model, tools and a system prompt into the agent loop; replaces initialize_agent", "S6"),
+    ("Agents as tools", "Wrap an agent in a function and give it to another agent as a tool: how a LangChain boss calls its experts", "S6"),
+    ("recursion_limit", "LangChain's step limit: one step per model call and per round of tool runs; the run stops with GraphRecursionError", "S6"),
+    ("Structured output", "llm.with_structured_output(schema): the model fills a JSON shape and your code gets a dictionary (routing, decisions)", "S6"),
+    ("kickoff / kickoff_async", "Start a CrewAI crew or agent; in a notebook use result = await crew.kickoff_async(inputs={...})", "S6"),
+    ("allow_delegation", "CrewAI: gives an agent the tools 'Delegate work to coworker' and 'Ask question to coworker'", "S6"),
+    ("max_rpm", "CrewAI's rate limit: at most this many model calls per minute", "S6"),
 ]
 
 
@@ -308,7 +315,7 @@ def hub_home():
         st.dataframe(pd.DataFrame(rows), hide_index=True)
 
     with tabs[3]:
-        st.write("Fourteen questions across the whole course.")
+        st.write("Fifteen questions across the whole course.")
         items = [
             ("Who decides the next step in a workflow? In an agent?", ["Workflow: the model. Agent: your code", "Workflow: your code. Agent: the model", "Both: the model"], 1, "Workflow: your code fixes the order. Agent: the model picks the next action."),
             ("A model returns a tool call. What has happened?", ["The function ran", "The model requested it; your code decides whether to run it", "The function was trained into the model"], 1, "Nothing runs until your code runs it (S1)."),
@@ -324,6 +331,7 @@ def hub_home():
             ("A manager's plan says 'leave insurance aside' and a keyword check passes it. What should you check instead?", ["The word count", "That every requirement has a named owner", "Nothing"], 1, "S5: a word in a task is not an owner."),
             ("A decentralized desk's General agent forwards any question it is unsure about. A customer asks something nobody owns. What stops the endless loop?", ["A faster model", "A hop limit and a final fallback", "Nothing needs to"], 1, "S6: no one has the whole picture, so bound the loop and end every chain."),
             ("In CrewAI, task2 (the writer) has no context=[task1]. What happens?", ["An error is raised", "It runs, but has no research and may invent facts", "It waits for task1"], 1, "S6: a silent failure; check what flows between tasks."),
+            ("A CrewAI manager_agent is given tools to 'verify work', as in the PDF. What does current CrewAI do?", ["Uses the tools to check", "Fails on kickoff: 'Manager agent should not have tools'", "Gives the tools to the workers"], 1, "S6: checked on CrewAI 1.15. Managers only delegate; the workers hold the tools."),
         ]
         picks = [st.radio("**%d. %s**" % (i + 1, q), o, index=None, key="hub_quiz_%d" % i) for i, (q, o, _, _) in enumerate(items)]
         if st.button("Check my answers", key="hub_quiz_check", type="primary"):

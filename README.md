@@ -6,8 +6,8 @@
 | 2 | `session2_building_blocks/` | Embeddings, ReAct vs plan, PEAS and agent types, safety/approval gates, limits, evaluation |
 | 3 | `session3_memory/` | Short- and long-term memory, forgetting, CoALA kinds, risks |
 | 4 | `session4_architecture/` | Architectures and patterns |
-| 5 | `session5_multi_agent/` | Multi-agent systems: why a team, centralized / decentralized / hybrid, four design patterns, what a team costs |
-| 6 | `session6_building_mas/` | Building multi-agent systems: a ReAct agent with tool and memory, centralized / decentralized / hybrid support desks, LangChain vs CrewAI (crew, agent, task, sequential and hierarchical process) |
+| 5 | `session5_multi_agent/` | Multi-agent systems: why a team, centralized / decentralized / hybrid, four design patterns, what a team costs (with the notebook's diagrams) |
+| 6 | `session6_building_mas/` | Building multi-agent systems: how LangChain works, the notebook 6A desks (agents as tools, step limits, router and peer questions), how CrewAI works (prompts recorded from the real library), crews, processes and allow_delegation |
 
 ## Run
 
@@ -25,3 +25,5 @@ session's state separate, and shares the mode and API key across sessions.
 - **Live**: paste a Gemini API key in the sidebar (or put it in `.streamlit/secrets.toml`, see the `.example` file). It falls back to Demo on any error. Live mode has not been tested end to end.
 
 Each session has the same structure: explanation pages, a hands-on lab per concept, and a "code peek".
+
+Sessions 5 and 6 cover their PDFs and notebooks completely, so the apps can be used instead of reading them.

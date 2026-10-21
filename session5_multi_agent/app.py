@@ -1,11 +1,13 @@
 """
-Multi-Agent Systems Lab: an interactive companion to "Agents, Session 5: Introduction to Multi-Agent Systems (MAS)".
+Multi-Agent Systems Lab: an interactive companion to "Agents, Session 5: Introduction to Multi-Agent Systems (MAS)"
+(the session PDF and the Session 5 notebook, including the notebook's diagrams).
 
 Run:   streamlit run app.py
 Works with NO API key (Demo mode: scripted agents and pretend data). Add a Gemini key for Live mode on the labs marked live-capable.
 """
 import inspect
 import os
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -30,6 +32,7 @@ PAGES = [
     "12 · What a team costs",
     "13 · Review, quiz & cheat sheet",
 ]
+ASSETS = Path(__file__).resolve().parent / "assets"
 
 try:
     STRETCH = {"width": "stretch"} if inspect.signature(st.dataframe).parameters["width"].default == "stretch" else {"use_container_width": True}
@@ -102,6 +105,16 @@ def dot(src: str):
     st.graphviz_chart(src)
 
 
+def picture(name: str, caption: str, width: int | None = None):
+    """A diagram from the Session 5 notebook (kept in the assets folder next to this app)."""
+    path = ASSETS / name
+    if path.exists():
+        if width:
+            st.image(str(path), caption=caption, width=width)
+        else:
+            st.image(str(path), caption=caption)
+
+
 def record(label: str, calls: int):
     """Remember how many model calls a design used, for the cost table on page 12."""
     st.session_state.setdefault("s5_ledger", {})[label] = calls
@@ -157,6 +170,48 @@ def page_home():
         c.button("Open", key="home_" + page, on_click=goto, args=(page,))
     st.markdown("**Modes:** *Demo* (default) needs no key: scripted agents and pretend data. *Live* (sidebar) asks Gemini to write the text on the labs marked 🔴 live-capable "
                 "(pages 1, 6 and 8). Counting, routing, refunds and budgets are always done by code.")
+    with st.expander("🧰 The notebook's building blocks: every demo is built from these few lines"):
+        st.markdown("The notebook deliberately uses **plain Gemini calls, no framework**, so you see the *shape* of each design. Every agent is just a system prompt "
+                    "(its role) plus a request. Two helpers count the calls, so every design reports its cost, and one function records every message, so you can "
+                    "always see who said what to whom.")
+        st.code('''from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.rate_limiters import InMemoryRateLimiter
+from langchain_core.messages import HumanMessage, SystemMessage
+
+# At most 4 calls a minute (the free tier allows 5), shared by every agent in this notebook
+rate_limiter = InMemoryRateLimiter(requests_per_second=4 / 60, check_every_n_seconds=0.5, max_bucket_size=1)
+llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite", rate_limiter=rate_limiter)
+call_count = {"total": 0}
+
+def ask(instructions, request):
+    """One agent turn: a system prompt (the agent's role) and a request. Returns text."""
+    call_count["total"] = call_count["total"] + 1
+    return llm.invoke([SystemMessage(content=instructions), HumanMessage(content=request)]).text
+
+def ask_structured(schema, instructions, request):
+    """One agent turn that must return data in the shape of `schema` (a dictionary)."""
+    call_count["total"] = call_count["total"] + 1
+    return llm.with_structured_output(schema).invoke([SystemMessage(content=instructions), HumanMessage(content=request)])
+
+message_log = []
+def send(sender, recipient, kind, content, task_id=""):
+    """Record one message between agents (or between an agent and the user)."""
+    message = {"from": sender, "to": recipient, "kind": kind, "task_id": task_id, "content": content}
+    message_log.append(message)
+    return message''', language="python")
+        st.caption("A 'specialist' is the same model with a narrower system prompt. 'Structured output' means the model fills in a JSON shape and your code gets a dictionary: "
+                   "that is how a coordinator's routing or a peer's decision becomes something code can act on.")
+    with st.expander("📍 Where each part of the PDF and the notebook is covered"):
+        df_show([
+            {"Source": "Why one agent is not enough; four limits of a single agent", "Page": "1"},
+            {"Source": "What a MAS is; three reasons (complexity, distribution, dynamics); when not to use one", "Page": "2"},
+            {"Source": "Building blocks (agents, environment, perception and action, reasoning, learning); the three C's", "Page": "3"},
+            {"Source": "Architectures: centralized, decentralized, hybrid (with the notebook's demos)", "Page": "4, 5, 6"},
+            {"Source": "The three architectures side by side", "Page": "7"},
+            {"Source": "Design patterns: manager/worker, peer/swarm, federated teams, pipeline", "Page": "8 to 11"},
+            {"Source": "What a team costs; MAS in the real world; emergent behaviour", "Page": "12"},
+            {"Source": "Conclusions, homework (HW1 to HW7), quick reference", "Page": "13"},
+        ])
 
 
 # ----------------------------------------------------------------------------------------
@@ -166,6 +221,11 @@ def page_one_agent():
     b = get_backend()
     st.header("1 · One agent, too many jobs")
     story("A single concierge answers the whole honeymoon request. Visa rules get one line, insurance gets 'consider it', and the budget never adds up.")
+    picture("single_vs_team.png", "The same request, handled by one agent doing everything, or by a coordinator and three specialists.", 760)
+    st.markdown("**Start with a simple picture.** One cleaning robot in a huge airport cannot keep up with thousands of people and spills everywhere. Deploy 50 robots, "
+                "each cleaning a zone and telling the others where the spills are, and the airport stays clean. LLM systems are the same: one chatbot trained to answer "
+                "everything, from medical advice to legal questions to travel bookings, gives incomplete answers in complex domains. A **team** (healthcare, finance and travel agents, "
+                "with a coordinator passing each question to the right expert) can handle a multi-step task like a medical trip abroad with insurance, appointments and tickets.")
     st.markdown("A single agent has four parts: **perception** (how it receives input), **memory**, **planning**, and **tools or actions**. "
                 "That is enough for a contained job such as a to-do assistant. But it runs into four limits:")
     df_show([
@@ -242,6 +302,10 @@ def page_why():
     st.header("2 · Why a team, and when not")
     plain("A **multi-agent system (MAS)** is several autonomous agents, each with its own knowledge, abilities and decisions, that collaborate or compete. "
           "The behaviour of the whole **emerges** from their interactions. Think of a city: no central brain, yet drivers, traffic lights and navigation apps keep it moving.")
+    picture("supervisor.png", "A common LLM multi-agent shape: a supervisor agent receives the question, delegates to agents that each have their own tools, "
+                              "and returns the final response.", 640)
+    st.markdown("**Why distribute the work?** Organising a music festival alone (booking artists, running the lights, selling tickets, managing security and food stalls) "
+                "would collapse. Specialised teams make it possible. That is the essence of a MAS: **distribute the responsibility**. Three properties of a problem make it necessary:")
     df_show([
         {"Reason": "Complexity and scale", "The problem": "Too big for one agent's compute, memory and foresight", "Example": "Global supply chains: port, trucks, weather, one coordinator"},
         {"Reason": "Distribution", "The problem": "Data and decisions are spread over places and owners", "Example": "A smart power grid: no control room sees every node in real time"},
@@ -301,8 +365,20 @@ def page_blocks():
             {"Kind": "Unsupervised (patterns)", "Example": "Cars notice zones with frequent stops"},
             {"Kind": "Collaborative", "Example": "Cars share accident-prone zones; lights share timing strategies"},
         ])
+    with st.expander("Perception, action and reasoning in more detail"):
+        st.markdown("**Agents are the heart of the system.** Think of a hospital team: a cardiologist, a neurologist and a general physician, each with their own expertise "
+                    "and tools, talking to each other so the patient gets complete care. Each agent brings **autonomy, expertise and goal-directed behaviour**; together they form "
+                    "**collective intelligence**.\n\n"
+                    "**Perception and action are a loop**, like a person crossing a busy street: look at the traffic (perceive), decide when it is safe, walk (act), then look "
+                    "again as the cars move. A support chatbot perceives \"what's my account balance?\" and acts by retrieving and reporting it.\n\n"
+                    "**Reasoning is harder in a team**, because each agent has only **local knowledge**, the environment is **shared and changing**, and decisions must balance "
+                    "**individual and collective goals**. It has three steps:\n"
+                    "1. **Understand the situation:** a traffic light sees cars approaching and which lanes are congested.\n"
+                    "2. **Evaluate options:** a car can slow down, change lanes or reroute, each with trade-offs.\n"
+                    "3. **Decide:** extend green for one lane to improve overall flow, considering local goals, global goals and other agents' actions.\n\n"
+                    "Without good reasoning, agents conflict (two cars wanting one lane), waste resources (lights switching inefficiently) or miss the system's goal (city-wide congestion).")
     st.subheader("The three C's")
-    dot('digraph { rankdir=LR; ' + NODE + ' Communication [fillcolor="#d0ebff"]; Coordination [fillcolor="#d3f9d8"]; Collaboration [fillcolor="#fff3bf"]; Communication -> Coordination -> Collaboration; }')
+    picture("three_cs.png", "Communication makes coordination possible, and coordination makes collaboration possible.", 760)
     df_show([
         {"C": "Communication", "Meaning": "Exchanging information: what, between whom, in what format", "A failure looks like": "A message nobody can route"},
         {"C": "Coordination", "Meaning": "Organising who does what and when", "A failure looks like": "Two bots answer the same customer"},
@@ -340,9 +416,15 @@ message_log.append(message)          # one list = a record of who said what to w
 def page_centralized():
     st.header("4 · Centralized: one boss")
     story("DilSeTrips' support desk: a coordinator receives every query and decides which specialist chatbot answers it.")
-    dot('digraph { ' + NODE + ' Coordinator [fillcolor="#ffe3e3"]; Customer -> Coordinator; Coordinator -> bookings_bot; Coordinator -> refunds_bot; Coordinator -> advice_bot; }')
+    c1, c2 = st.columns([1, 1.3])
+    with c1:
+        picture("centralized.jpg", "A central coordinator directs research, analysis, writing and review agents.")
+    with c2:
+        dot('digraph { ' + NODE + ' Coordinator [fillcolor="#ffe3e3"]; Customer -> Coordinator; Coordinator -> bookings_bot; Coordinator -> refunds_bot; Coordinator -> advice_bot; }')
     st.markdown("**How it works:** agents report to the controller → the controller decides using its global view → it sends instructions back → agents execute. "
-                "Like an orchestra with one conductor.")
+                "Like an orchestra with one conductor, who has the full score and sees every musician. (A decentralized system is more like a jazz ensemble improvising together.) "
+                "Or a software team where one project manager makes every decision: priorities, assignments, progress checks. The controller has the **global view**; "
+                "the agents are mainly **executors with limited autonomy**.")
     c1, c2 = st.columns(2)
     c1.markdown("**Strengths**\n- Simple to coordinate, monitor and debug (one place to look)\n- A global view lets it resolve conflicts\n- Uniform rules when priorities are critical")
     c2.markdown("**Limits**\n- Single point of failure\n- The controller is a bottleneck as load grows\n- Reduced autonomy for the specialists\n- Heavy message traffic and delayed decisions")
@@ -387,7 +469,11 @@ def page_decentralized():
     st.header("5 · Decentralized: no boss")
     plain("Like contributors to an open-source project: no manager assigns tasks. Each agent decides from **local observations** and messages from peers, and coordinates directly. "
           "Robust (one agent failing does not stop the others) and scalable, but with its own problems.")
-    dot('digraph { ' + NODE + ' edge [dir=both]; bot_A -> bot_B; bot_B -> bot_C; bot_C -> bot_D; bot_D -> bot_A; bot_A -> bot_C; bot_B -> bot_D; Customer [fillcolor="#fff3bf"]; Customer -> bot_B [dir=forward]; }')
+    c1, c2 = st.columns([1, 1.2])
+    with c1:
+        picture("decentralized.png", "Agents talk to each other directly; any of them can receive input.")
+    with c2:
+        dot('digraph { ' + NODE + ' edge [dir=both]; bot_A -> bot_B; bot_B -> bot_C; bot_C -> bot_D; bot_D -> bot_A; bot_A -> bot_C; bot_B -> bot_D; Customer [fillcolor="#fff3bf"]; Customer -> bot_B [dir=forward]; }')
     st.markdown("Each bot loops: **observe** (new messages, what peers seem to be doing) → **decide locally** (handle it, or hand it to a peer) → **tell peers** → **act** → **learn** → repeat.")
     st.subheader("Lab 1 · A VIP query meets a stale status board")
     st.markdown("Bot B has 4 queries and receives a VIP query. It only knows the **status board**, which peers update when they can. Bot C's real queue is 3 but the board says 0.")
@@ -445,8 +531,28 @@ def page_hybrid():
     st.header("6 · Hybrid: a plan and free hands")
     plain("A **hybrid** architecture combines central oversight (global objectives, conflict resolution, monitoring) with autonomous agents that decide locally and talk to each other. "
           "The coordinator does **not** micromanage every agent, which avoids the bottleneck.")
-    dot('digraph { ' + NODE + ' Manager [fillcolor="#ffe3e3"]; User -> Manager; Manager -> cancellation_agent; Manager -> booking_agent; '
-        'booking_agent -> cancellation_agent [color="#2f9e44", penwidth=2, label="direct", dir=both]; cancellation_agent -> Manager [style=dashed]; booking_agent -> Manager [style=dashed]; Manager -> User; }')
+    c1, c2 = st.columns([1, 1.2])
+    with c1:
+        picture("hybrid.jpg", "A central coordinator oversees clusters of agents that collaborate directly within each cluster.")
+    with c2:
+        dot('digraph { ' + NODE + ' Manager [fillcolor="#ffe3e3"]; User -> Manager; Manager -> cancellation_agent; Manager -> booking_agent; '
+            'booking_agent -> cancellation_agent [color="#2f9e44", penwidth=2, label="direct", dir=both]; cancellation_agent -> Manager [style=dashed]; booking_agent -> Manager [style=dashed]; Manager -> User; }')
+    st.markdown("**Think of a large software company.** A project manager sets deadlines and protects the overall vision; developers and team leads work independently on "
+                "their modules and coordinate directly on dependencies. A hybrid architecture has four components:")
+    df_show([
+        {"Component": "Central oversight", "What it does": "A coordinator sets global objectives and priorities, resolves conflicts when tasks overlap, and monitors performance, without micromanaging"},
+        {"Component": "Autonomous agents", "What it does": "Each makes local decisions from its own perception and executes without waiting for central instructions"},
+        {"Component": "Peer-to-peer coordination", "What it does": "Agents exchange information, share workload and collaborate directly, adapting to failures and spikes"},
+        {"Component": "Integrated global and local knowledge", "What it does": "Central awareness of objectives and critical decisions, plus local intelligence for observation and execution"},
+    ])
+    with st.expander("The session document's example: return a product and ship it to Germany"):
+        st.markdown("A customer wants to return a product and ship it to Germany. The **request manager** splits it into a returns task and a shipping task. "
+                    "The **returns agent** checks the policy and starts the return. The **shipping agent** checks customs documents and costs, and asks the returns agent "
+                    "**directly** for the parcel's weight. The manager combines both into one answer.\n\n"
+                    "What that example shows: a **balance of control and flexibility** (the manager routes; specialists solve); **scalability** (plug in a tax-compliance "
+                    "agent for international orders); **robustness** (if the shipping API fails, the coordinator switches provider); **efficient collaboration** (the weight "
+                    "goes agent to agent, not via the coordinator); **global and local intelligence** (the coordinator makes sure the query is fully solved; a translation agent "
+                    "writes the answer in German); and a **better user experience** (one structured answer, not a runaround). The lab below is the DilSeTrips version.")
     st.markdown("**The eight stages** (centralized at both ends, decentralized in the middle):")
     df_show([{"Stage": s, "Who handles it": w, "What happens": d} for s, w, d in me.HYBRID_STAGES])
     st.subheader("Lab · cancel one stay and rebook another using the refund")
@@ -480,6 +586,11 @@ def page_hybrid():
 # ----------------------------------------------------------------------------------------
 def page_choose():
     st.header("7 · Choosing an architecture")
+    plain("Two questions shape any MAS. **How are the agents organised?** That is the **architecture**: how control, decisions and responsibilities are distributed. "
+          "**How do they interact to get work done?** That is the **design pattern**. In a software company, the architecture is the management model (one project manager "
+          "assigns every task, developers self-organise, or leads oversee modules while teams collaborate). The patterns are how collaboration happens inside it (a senior "
+          "developer assigning work to juniors, pairs reviewing each other's code, backend, frontend and QA teams working semi-independently). Together they decide a system's "
+          "**efficiency, robustness and scalability**.")
     st.markdown("**The three architectures side by side**")
     df_show(me.ARCH_COMPARE)
     st.subheader("Lab · HW7 · choose a design (and name one risk)")
@@ -511,7 +622,10 @@ def page_choose():
 # ----------------------------------------------------------------------------------------
 def page_manager():
     st.header("8 · Pattern: manager / worker")
-    plain("A **manager** breaks the request into tasks, gives each to a specialised **worker**, and integrates the results. It suits centralized and hybrid architectures. "
+    picture("patterns.png", "The four design patterns of pages 8 to 11: manager/worker, peer/swarm, federated teams, and sequential pipeline.", 820)
+    st.caption("A software company with backend, frontend, QA and DevOps teams uses all four: sometimes a project manager coordinates; sometimes teams collaborate directly; "
+               "depending on the work, they run as a pipeline or specialise by domain. Patterns define **roles, relationships and workflows**.")
+    plain("Like a project manager who receives a client's feature request, splits it into frontend, backend and QA tasks, and integrates the results: a **manager** breaks the request into tasks, gives each to a specialised **worker**, and integrates the results. It suits centralized and hybrid architectures. "
           "The weak spot: **the manager's plan is the only map.** A requirement that is not on it simply does not get done.")
     dot('digraph { ' + NODE + ' Manager [fillcolor="#ffe3e3"]; Manager -> visa_worker; Manager -> budget_worker; Manager -> itinerary_worker; visa_worker -> Manager [style=dashed]; budget_worker -> Manager [style=dashed]; itinerary_worker -> Manager [style=dashed]; }')
     c1, c2 = st.columns(2)
@@ -558,6 +672,9 @@ def page_swarm():
     st.header("9 · Pattern: peer / swarm")
     plain("**All agents are equals**, with no coordinator. Each peer decides for itself; **swarm behaviour** emerges when many peers follow simple local rules. "
           "Peers coordinate through a **shared board**, which is part of the environment.")
+    st.caption("The session document's LLM example: a research institute analysing thousands of papers. Each agent analyses a subset, shares findings with neighbouring agents "
+               "to avoid duplication, and the collective produces one literature summary with no coordinator. It scales horizontally (more agents, faster), is robust "
+               "(if some fail, others continue) and adapts as new papers arrive. Other examples: search-and-rescue drones, autonomous cars changing lanes, delivery drones.")
     dot('digraph { ' + NODE + ' board [shape=cylinder, fillcolor="#fff3bf"]; peer_1 -> board; peer_2 -> board; peer_3 -> board; board -> peer_1 [style=dashed]; board -> peer_2 [style=dashed]; board -> peer_3 [style=dashed]; }')
     st.markdown("**Two local rules:** (1) claim the first unclaimed section on the board and post **two new insights**, skipping anything already posted. (2) If nothing is left to claim, write the summary from the board. "
                 "The sections come from a **pretend** Manali guide.")
@@ -606,7 +723,7 @@ while not summary_written and turn < 10:                   # a hard limit on tur
 # ----------------------------------------------------------------------------------------
 def page_federated():
     st.header("10 · Pattern: federated teams")
-    plain("Agents are **grouped by expertise**. Each team works on its own and collaborates across teams only when a task needs it. Unlike a swarm, agents are not equals; "
+    plain("Like a consulting firm's tax, legal, IT and strategy teams, agents are **grouped by expertise**. Each team works on its own and collaborates across teams only when a task needs it. Unlike a swarm, agents are not equals; "
           "unlike manager/worker, there may be no single manager. The key to making it work is a **shared report format**.")
     dot('digraph { ' + NODE + ' subgraph cluster_a { label="documents team"; visa_agent; passport_agent; } subgraph cluster_b { label="money team"; flights_agent; insurance_agent; } '
         'money_team [shape=plaintext, fillcolor=white, style=""]; flights_agent -> visa_agent [label="asks across teams", color="#2f9e44", penwidth=2]; }')
@@ -823,6 +940,17 @@ def page_review():
         {"Pattern": "Federated teams", "Who talks to whom": "Freely inside a team; across teams when needed", "Fits": "Hybrid, decentralized", "Weak spot": "Integration; needs shared formats"},
         {"Pattern": "Sequential pipeline", "Who talks to whom": "Each stage → the next", "Fits": "Centralized (fixed order)", "Weak spot": "Delays and errors propagate"},
     ])
+    st.subheader("What the session concludes")
+    st.markdown("""
+1. **Multi-agent systems are necessary when problems are too complex, distributed or dynamic for one agent.** The honeymoon request spanned four domains; one generalist covered each thinly.
+2. **A MAS is built from autonomous agents in a shared environment,** each with perception, actions, reasoning and learning. Its success depends on the **three C's**: communication (a shared message format), coordination (who does what, when, without clashes) and collaboration (combining results into one outcome).
+3. **Architecture decides who decides.** Centralized: easy to control and debug, single point of failure. Decentralized: robust and scalable, overhead and inconsistent knowledge. Hybrid: central oversight plus local autonomy, where most LLM applications land.
+4. **Design patterns decide who talks to whom:** manager/worker, peer/swarm, federated teams and pipelines, each with its own strengths and failure modes.
+5. **Specialists beat a generalist on complex tasks,** through division of labour and focused knowledge, at the cost of more calls, more latency and more coordination.
+6. **Emergent behaviour is the central challenge:** the system does things no single agent was told to do, for better and for worse, so it needs logging, limits and testing.
+""")
+    st.warning("**What a team does not fix.** Every specialist was the same model with a different role. Splitting the work improved **focus**, not **truth**. "
+               "Checkers, shared formats, code for arithmetic and humans for final decisions are what make a team trustworthy.")
     st.info("Next session: you build these designs properly with LangChain and with CrewAI, a framework for teams of role-based agents.")
 
 

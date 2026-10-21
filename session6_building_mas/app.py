@@ -1,34 +1,41 @@
 """
-Building MAS Lab: an interactive companion to "Agents, Session 6 (cont.): Building Multi-Agent Systems with LangChain and CrewAI".
+Building MAS Lab: an interactive companion to "Agents, Session 6: Building Multi-Agent Systems with LangChain and CrewAI"
+(the session PDF, notebook 6A "Multi-Agent Systems with LangChain" and notebook 6B "Meet CrewAI").
 
 Run:   streamlit run app.py
 Works with NO API key and with neither LangChain nor CrewAI installed (Demo mode: scripted agents, pretend data).
-Add a Gemini key for Live mode on the CrewAI-style labs (pages 8 and 9).
+Add a Gemini key for Live mode on the CrewAI-style labs (pages 10 and 11).
 """
 import copy
 import inspect
 import os
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
 import crew_engine as ce
+import lc_engine as le
 
 st.set_page_config(page_title="Building MAS Lab", page_icon="🛠️", layout="wide")
 
 PAGES = [
     "🏠 Start here",
-    "1 · One agent in LangChain: tool + memory",
-    "2 · Centralized support desk",
-    "3 · Decentralized support desk",
-    "4 · Hybrid support desk",
-    "5 · Three designs, one set of questions",
-    "6 · Why a framework? LangChain vs CrewAI",
-    "7 · CrewAI building blocks",
-    "8 · Process: sequential",
-    "9 · Process: hierarchical (a manager)",
-    "10 · Review, quiz & cheat sheet",
+    "1 · How LangChain works",
+    "2 · One agent in LangChain: tool + memory",
+    "3 · Centralized support desk",
+    "4 · Decentralized support desk",
+    "5 · Hybrid support desk",
+    "6 · Three designs, one set of questions",
+    "7 · Why a framework? LangChain vs CrewAI",
+    "8 · How CrewAI works",
+    "9 · CrewAI building blocks",
+    "10 · Process: sequential",
+    "11 · Process: hierarchical (a manager)",
+    "12 · Agents asking each other",
+    "13 · Review, quiz & cheat sheet",
 ]
+ASSETS = Path(__file__).resolve().parent / "assets"
 
 try:
     STRETCH = {"width": "stretch"} if inspect.signature(st.dataframe).parameters["width"].default == "stretch" else {"use_container_width": True}
@@ -107,6 +114,30 @@ def dot(src: str):
     st.graphviz_chart(src)
 
 
+def picture(name: str, caption: str, width: int | None = None):
+    """A diagram from the notebooks (kept in the assets folder next to this app)."""
+    path = ASSETS / name
+    if path.exists():
+        if width:
+            st.image(str(path), caption=caption, width=width)
+        else:
+            st.image(str(path), caption=caption)
+
+
+try:
+    _CODE_WRAP = "wrap_lines" in inspect.signature(st.code).parameters
+except Exception:
+    _CODE_WRAP = False
+
+
+def code_block(text: str):
+    """Long prompt text, wrapped when this Streamlit version supports it."""
+    if _CODE_WRAP:
+        st.code(text, language=None, wrap_lines=True)
+    else:
+        st.text(text)
+
+
 def show_log(log: ce.Log, title: str = "Message log (who said what to whom)"):
     st.markdown("**" + title + "**")
     df_show(log.rows())
@@ -162,7 +193,8 @@ def live_backend():
 # ----------------------------------------------------------------------------------------
 def page_home():
     st.title("🛠️ Building MAS Lab: from the design to a working team")
-    st.caption("An interactive companion to *Agents, Session 6 (cont.): Building Multi-Agent Systems* with LangChain and CrewAI.")
+    st.caption("An interactive companion to *Agents, Session 6: Building Multi-Agent Systems* (the PDF, notebook 6A with LangChain, and notebook 6B with CrewAI). "
+               "Everything in those three is explained here, so you can learn from the app alone.")
     story("Last session Prasad drew the team on a whiteboard: who decides, and who talks to whom. Now he has to build it. His support desk needs a Product agent, a Policy agent and a "
           "General agent. He builds it three ways, then wonders if a framework could do the plumbing for him.")
     st.success("**Two ideas to hold on to:** an *architecture* is how the system is structured (the blueprint); a *design pattern* is how the agents interact (how people use the building). "
@@ -170,17 +202,22 @@ def page_home():
     dot('digraph { rankdir=LR; ' + NODE + ' Customer [fillcolor="#fff3bf"]; Orchestrator [fillcolor="#ffe3e3"]; '
         'Customer -> Orchestrator; Orchestrator -> Product; Orchestrator -> Policy; Orchestrator -> General; Product -> Policy [style=dashed, dir=both, label="ask directly"]; }')
     st.subheader("Your path")
+    st.markdown("**Part A · LangChain (notebook 6A):** the parts of one agent, then the same support desk built three ways by hand.  \n"
+                "**Part B · CrewAI (notebook 6B):** what a framework does with a description of the team.")
     path = [
-        ("1 · One agent in LangChain", PAGES[1], "A ReAct agent with a search tool and a chat memory. Switch the memory off and watch a follow-up fail."),
-        ("2 · Centralized support desk", PAGES[2], "An orchestrator routes each query to one worker. A mixed question gets half an answer. Switch the orchestrator off."),
-        ("3 · Decentralized support desk", PAGES[3], "No orchestrator: each agent answers its part and forwards the rest. Add a loop, then a hop limit."),
-        ("4 · Hybrid support desk", PAGES[4], "The orchestrator routes, but agents ask each other directly. Direct versus via the boss."),
-        ("5 · Three designs, one set of questions", PAGES[5], "The same five questions through every design: calls, messages, who is fully answered, and what each survives."),
-        ("6 · Why a framework?", PAGES[6], "The notebook's LangChain vs CrewAI table as a checklist of what you wire by hand."),
-        ("7 · CrewAI building blocks", PAGES[7], "Crew, Agents, Tasks, Process. Edit role, goal and task text; the CrewAI code updates."),
-        ("8 · Process: sequential", PAGES[8], "Research then write. Remove the context, reorder the tasks, mistype the input: see what breaks."),
-        ("9 · Process: hierarchical", PAGES[9], "manager_llm versus manager_agent: the manager that checks costs calls and catches short research."),
-        ("10 · Review", PAGES[10], "Quiz, homework map, cheat sheet and the session's conclusions."),
+        ("1 · How LangChain works", PAGES[1], "The parts of LangChain, one agent's message list step by step, how a function becomes a tool, the step limit, old vs new code."),
+        ("2 · One agent in LangChain", PAGES[2], "A ReAct agent with a search tool and a chat memory. Switch the memory off and watch a follow-up fail."),
+        ("3 · Centralized support desk", PAGES[3], "An orchestrator routes each query. Notebook 6A: the experts are the boss's tools; a step limit stops it."),
+        ("4 · Decentralized support desk", PAGES[4], "No orchestrator. Notebook 6A: each expert asks 'is this mine?'. The six ways to handle a multi-part message."),
+        ("5 · Hybrid support desk", PAGES[5], "Route, then experts ask each other. Notebook 6A: a light router, a peer question, the refund done in code."),
+        ("6 · Three designs compared", PAGES[6], "The same questions through every design, what each survives, and notebook 6A's scoreboard."),
+        ("7 · Why a framework?", PAGES[7], "LangChain vs CrewAI as a checklist of what you wire by hand."),
+        ("8 · How CrewAI works", PAGES[8], "The exact prompts real CrewAI builds from role, goal, backstory, task and context; kickoff, tools and settings."),
+        ("9 · CrewAI building blocks", PAGES[9], "Crew, Agents, Tasks, Process. Edit role, goal and task text; the CrewAI code updates."),
+        ("10 · Process: sequential", PAGES[10], "Research then write. Remove the context, reorder the tasks, mistype the input: see what breaks."),
+        ("11 · Process: hierarchical", PAGES[11], "A manager decides. Why it cannot have tools, and what assigning tasks does to it."),
+        ("12 · Agents asking each other", PAGES[12], "allow_delegation: a copywriter asks a fact checker. Session 5's patterns in CrewAI."),
+        ("13 · Review", PAGES[13], "Quiz, homework from both notebooks, cheat sheet and the session's conclusions."),
     ]
     for title, page, desc in path:
         a, b, c = st.columns([3, 6, 1.4])
@@ -188,20 +225,141 @@ def page_home():
         b.write(desc)
         c.button("Open", key="home_" + page, on_click=goto, args=(page,))
     st.markdown("**Modes:** *Demo* (default) needs no key and installs neither LangChain nor CrewAI: the agents are scripted and the data is pretend. "
-                "*Live* (sidebar) lets Gemini write the text on pages 8 and 9. Counting, routing and checking are always done by code.")
-    st.caption("About the 'mini CrewAI' on pages 7 to 9: it is a small model written for this lab to show what a framework does for you. It is not the CrewAI library, "
-               "and the real library has more options and may behave differently in details. The notebook's real code is shown on each page.")
+                "*Live* (sidebar) lets Gemini write the text on pages 10 and 11. Counting, routing and checking are always done by code.")
+    st.caption("How the demos stay honest: the notebook's data, tools and refund arithmetic are copied exactly; LangChain's step counting and tool descriptions were "
+               "measured on LangChain 1.4; the prompts on page 8 were recorded from the real CrewAI 1.15. The 'mini CrewAI' on pages 9 to 11 is a small teaching "
+               "model, not the CrewAI library.")
+    with st.expander("📍 Where each part of the PDF and the notebooks is covered"):
+        table_show([
+            {"Source": "PDF · Why LangChain for MAS (4 reasons)", "Page": "1 and 2"},
+            {"Source": "PDF · Build a ReAct agent step by step (7 steps)", "Page": "2 (and 1 for the LangChain 1.x version)"},
+            {"Source": "PDF · Centralized / decentralized / hybrid customer support", "Page": "3, 4, 5"},
+            {"Source": "PDF · Relating patterns to architectures (summary table)", "Page": "6"},
+            {"Source": "PDF · Limits of LangChain; why CrewAI; comparison table", "Page": "7"},
+            {"Source": "PDF · CrewAI components; sequential and hierarchical; manager_llm vs manager_agent", "Page": "8 to 11"},
+            {"Source": "PDF · Hands-on CrewAI (research + writer crew, kickoff)", "Page": "9 and 10"},
+            {"Source": "PDF · Conclusions", "Page": "13"},
+            {"Source": "Notebook 6A · setup, ask(), warm-up agent with tools and memory", "Page": "1"},
+            {"Source": "Notebook 6A · centralized desk: agents as tools, step limit", "Page": "3 (Lab B)"},
+            {"Source": "Notebook 6A · decentralized desk and the six approaches", "Page": "4 (Lab B)"},
+            {"Source": "Notebook 6A · hybrid desk: router, peer question, calculate_refund", "Page": "5 (Lab B)"},
+            {"Source": "Notebook 6A · the same message, three desks; patterns; homework", "Page": "6 (Lab B) and 13"},
+            {"Source": "Notebook 6B · steps 1 to 3: one agent, a tool, tasks", "Page": "8 and 9"},
+            {"Source": "Notebook 6B · step 4: pipeline with context and {topic}", "Page": "10"},
+            {"Source": "Notebook 6B · step 5: a manager who decides", "Page": "11"},
+            {"Source": "Notebook 6B · step 6: agents asking each other; patterns in CrewAI; memory", "Page": "12"},
+            {"Source": "Notebook 6B · what CrewAI did and didn't; exercises; quick reference", "Page": "8 and 13"},
+        ])
 
 
 # ----------------------------------------------------------------------------------------
-# Page 1: one agent in LangChain
+# Page 1: How LangChain works
+# ----------------------------------------------------------------------------------------
+def page_how_langchain():
+    st.header("1 · How LangChain works")
+    story("Before Prasad builds a team, he wants to know exactly what each part of LangChain does, so that nothing in the "
+          "team code is magic. He takes one agent apart, message by message.")
+    plain("**LangChain** is a Python toolkit for building apps on top of language models. It does not make the model smarter. "
+          "It gives you ready-made parts: a wrapper to call the model, one standard **message** format, a way to turn your own Python "
+          "functions into **tools** the model can request, and **create_agent**, which runs the loop *think → request a tool → "
+          "read the result → answer*. In a team, who talks to whom is still **your own code** (pages 3 to 5). That is the gap CrewAI fills (page 8).")
+    st.subheader("The parts, and the notebook line for each")
+    table_show(le.PARTS)
+    show_code("The notebook's setup cell (one model and one rate limiter, shared by every agent)", le.CODE["setup"])
+
+    st.subheader("Lab 1 · Inside create_agent: one list of messages")
+    st.markdown("An agent made with `create_agent` works on **one list of messages**. Each time the model is called it reads the **whole** list "
+                "and adds one message. If that message asks for a tool, LangChain runs your Python function and adds the result. "
+                "The loop stops when the model answers without asking for a tool. Step through the notebook's warm-up agent "
+                "(two free tools: a weather forecast and the Wikivoyage travel guide).")
+    dot('digraph { rankdir=LR; ' + NODE + ' you [label="Your question\\n(HumanMessage)", fillcolor="#fff3bf"]; '
+        'model [label="Model call\\n(writes an AIMessage)", fillcolor="#ffe3e3"]; tools [label="LangChain runs\\nyour function\\n(ToolMessage)", fillcolor="#d3f9d8"]; '
+        'answer [label="Answer\\n(AIMessage with\\nno tool_calls)", fillcolor="#d0ebff"]; '
+        'you -> model; model -> tools [label="tool_calls"]; tools -> model [label="result"]; model -> answer [label="done"]; }')
+    c1, c2 = st.columns([2, 3])
+    mem = c1.radio("Between turn 1 and turn 2", ["Keep the conversation list (memory on)", "conversation = [ ] (memory off)"], key="s6_lc_mem")
+    msgs = le.warmup_messages(mem.startswith("Keep"))
+    n = c2.slider("Show the list up to message number", 1, len(msgs), len(msgs), key="s6_lc_n_" + mem[:4])
+    shown = msgs[:n]
+    metric_row([("Messages in the list", n), ("Model calls so far", sum(1 for m in shown if m[1] == "AIMessage")),
+                ("Tool runs so far", sum(1 for m in shown if m[1] == "ToolMessage"))])
+    df_show([{"#": i + 1, "Turn": t, "Message type": typ, "Content": content[:140], "What happened": note}
+             for i, (t, typ, content, note) in enumerate(shown)])
+    last = shown[-1]
+    st.info("**Message %d (%s):** %s" % (n, last[1], last[3]))
+    if not mem.startswith("Keep") and n == len(msgs):
+        st.error("With the list emptied, turn 2 starts from nothing: 'there' has no meaning, so the agent cannot pick a tool. "
+                 "The model itself never remembered turn 1: **memory is the list your code keeps and sends again.**")
+    notice("Every AIMessage is one model call. The model never runs your function: it only writes a request (tool_calls). "
+           "LangChain runs it and appends a ToolMessage. Count the calls: a question that needs one tool costs **two** model calls.")
+    show_code("The notebook's warm-up agent (memory = a Python list)", le.CODE["warmup"])
+
+    st.subheader("Lab 2 · How a Python function becomes a tool")
+    st.markdown("The model never sees your code. It sees a short description that LangChain builds from the function's **name**, "
+                "**type hints** and **docstring**. Pick one of the notebook's tools.")
+    tool = st.selectbox("Tool", list(le.TOOLS), index=list(le.TOOLS).index("calculate_refund") if "calculate_refund" in le.TOOLS else 0, key="s6_lc_tool")
+    c1, c2 = st.columns(2)
+    c1.markdown("**What you write (notebook 6A)**")
+    c1.code(le.TOOLS[tool]["code"], language="python")
+    c2.markdown("**What the model receives** (generated by LangChain 1.4 from that function)")
+    c2.json(le.TOOL_SCHEMAS[tool])
+    notice("name = the function's name · description = the docstring's first line · each argument's type = its type hint · "
+           "each argument's description = its line under *Args:*. That is **all** the model knows about your tool, so the docstring "
+           "is an instruction to the model, not just a comment.")
+
+    st.subheader("Lab 3 · The step limit (recursion_limit)")
+    st.markdown("A runaway agent could call tools forever, so every run has a **step limit**. In LangChain 1.x it is "
+                "`config={\"recursion_limit\": N}` and it counts **steps**: one per model call and one per round of tool runs.")
+    c1, c2, c3 = st.columns(3)
+    k = c1.slider("Tool calls the agent needs", 0, 5, 3, key="s6_lc_k")
+    together = c2.radio("How the model asks for them", ["One tool per step", "All in one step"], key="s6_lc_together") == "All in one step"
+    limit = c3.slider("recursion_limit", 2, 15, 4, key="s6_lc_limit")
+    steps = 1 if k == 0 else (3 if together else 2 * k + 1)
+    need = steps + 1
+    metric_row([("Steps this run takes", steps), ("Smallest recursion_limit that works", need), ("Model calls", 1 if k == 0 else (2 if together else k + 1))])
+    if limit >= need:
+        st.success("The run finishes: %d steps fit inside recursion_limit=%d." % (steps, limit))
+    else:
+        st.error("GraphRecursionError: Recursion limit of %d reached without hitting a stop condition. "
+                 "The work done so far is lost (but its model calls were still paid for)." % limit)
+    df_show([{"Older code (session plan)": "max_iterations=2", "LangChain 1.x": "recursion_limit=4", "Why": "about two steps per iteration (model + tools)"},
+             {"Older code (session plan)": "max_iterations=4", "LangChain 1.x": "recursion_limit=9", "Why": "4 iterations ≈ 8 steps, plus the final answer"}])
+    st.caption("Measured on LangChain 1.4 with a stand-in model: three tool calls one per step = 7 steps, which fails at recursion_limit 7 and passes at 8; "
+               "all three in one step = 3 steps, which passes at 4. Page 3 uses this on the notebook's three-part message.")
+
+    st.subheader("Structured output: a dictionary instead of text")
+    st.markdown("Routing and yes/no decisions need data your code can use, not prose. `llm.with_structured_output(schema)` makes the model "
+                "fill in a JSON shape, and you get a plain Python **dictionary** back. It is one model call. The decentralized desk (page 4) uses it "
+                "for each expert's *is this mine?* decision, and the hybrid desk (page 5) uses it to split a message.")
+    show_code("The hybrid desk's router shape (notebook 6A)", le.CODE["router_schema"])
+
+    st.subheader("Old LangChain code vs LangChain 1.x")
+    st.markdown("The PDF and many tutorials use the older interface. The notebooks use LangChain 1.x. Here is what changed, checked on LangChain 1.4:")
+    table_show(le.OLD_VS_NEW)
+
+    st.subheader("From one agent to a team: what LangChain leaves to you")
+    table_show([
+        {"Desk": "Centralized (page 3)", "How notebook 6A builds it": "Agents as tools: each expert is wrapped in a function, and those functions are the boss's tools"},
+        {"Desk": "Decentralized (page 4)", "How notebook 6A builds it": "A Python loop over the experts; each makes a structured yes/no decision"},
+        {"Desk": "Hybrid (page 5)", "How notebook 6A builds it": "A structured-output router splits the message; an expert gets a tool that calls another expert directly"},
+    ])
+    st.success("**Takeaway.** LangChain = the parts for one agent: model, messages, tools from docstrings, the create_agent loop, structured output and a step limit. "
+               "Every hand-off between agents is code you write. Pages 3 to 5 show that code; page 8 shows what CrewAI does instead.")
+    st.button("Next: one agent with tools and memory →", on_click=goto, args=(PAGES[2],), type="primary")
+
+
+
+# ----------------------------------------------------------------------------------------
+# Page 2: one agent in LangChain
 # ----------------------------------------------------------------------------------------
 def page_react():
-    st.header("1 · One agent in LangChain: tool + memory")
+    st.header("2 · One agent in LangChain: tool + memory")
     story("Before building a team, build one good member. Prasad's support agent must answer 'what's the latest...' questions (it needs a search tool) and follow-ups like 'and the visa fee there?' (it needs memory).")
     plain("LangChain gives you the parts: a model wrapper, tools, memory, and a way to wire them into an agent. Each agent in a team is built from the same parts, so learn them on one agent first.")
-    st.subheader("The seven steps of the notebook")
+    st.subheader("The seven steps in the PDF")
     table_show([{"Step": s, "What it does": w, "The line to look for": c} for s, w, c in ce.STEPS_OF_AN_AGENT])
+    st.caption("These are the PDF's steps, written for the older LangChain. With LangChain 1.x (the notebooks), step 5 becomes 'keep the message list' and "
+               "step 6 becomes create_agent: see the old-vs-new table on page 1. The ideas are the same.")
     st.caption("Why LangChain for multi-agent work? Native LLM integration, easy tool wrapping, plug-in memory, and a modular design where each agent is a chain you can swap.")
 
     st.subheader("Lab 1 · A three-message conversation, with and without memory")
@@ -229,7 +387,16 @@ def page_react():
     notice("Searching costs one extra model call (the answer is written after reading the result). Changing max_results does not change the number of calls, but it changes how much text each call must read.")
     st.caption("Everything above is scripted with pretend search results; there is no live web search in the demo. The model's temperature (0.3 in the notebook) cannot be shown here because a script does not vary: "
                "a lower temperature makes a real model's answers more focused and repeatable, a higher one more varied.")
-    show_code("The notebook's agent, step by step (and a note about versions)", """
+    show_code("The same agent with LangChain 1.x (notebook 6A style)", """
+from langchain.agents import create_agent
+
+agent = create_agent(model=llm, tools=[search], system_prompt="You are a helpful travel assistant. Use search for current facts.")
+conversation = []                                             # memory = the message list you keep
+conversation.append({"role": "user", "content": user_input})
+result = agent.invoke({"messages": conversation}, config={"recursion_limit": 9})
+conversation = result["messages"]
+print(result["messages"][-1].text)                            # the answer is the last message""")
+    show_code("The PDF's agent (older LangChain), and what fails on LangChain 1.x", """
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=google_api_key, temperature=0.3)
 search = TavilySearchResults(tavily_api_key=tavily_api_key, max_results=2)
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
@@ -237,27 +404,27 @@ agent = initialize_agent(tools=[search], llm=llm, agent=AgentType.STRUCTURED_CHA
                          memory=memory, verbose=True)
 response = agent.invoke(user_input)
 
-# Version notes to check on YOUR install (LangChain changes quickly):
-#  * initialize_agent, AgentType and ConversationBufferMemory are the older 'classic' interfaces. In recent LangChain
-#    releases they may live in a separate langchain-classic package or have newer replacements: read the docs for your version.
-#  * The classic agent's invoke() normally returns a dictionary whose answer sits under 'output', so print(response['output']).
-#    The notebook's print(response.content) can raise an AttributeError for that reason.""")
+# Checked on LangChain 1.4:
+#  * 'from langchain.agents import initialize_agent' and 'from langchain.memory import ...' both fail: these older interfaces
+#    moved to the separate langchain-classic package (pip install langchain-classic, then import from langchain_classic).
+#  * The classic agent's invoke() returns a dictionary whose answer sits under 'output', so print(response['output']).
+#    The PDF's print(response.content) raises an AttributeError.""")
     st.success("**Takeaway.** One LangChain agent = a model + tools + memory. A team is several of these, plus the coordination you have to write yourself.")
-    st.button("Next: the centralized desk →", on_click=goto, args=(PAGES[2],), type="primary")
+    st.button("Next: the centralized desk →", on_click=goto, args=(PAGES[3],), type="primary")
 
 
 # ----------------------------------------------------------------------------------------
-# Page 2: centralized
+# Page 3: centralized
 # ----------------------------------------------------------------------------------------
 def page_central():
-    st.header("2 · Centralized support desk")
+    st.header("3 · Centralized support desk")
     story("Prasad's first desk has a central **orchestrator** that receives every message and decides who answers: a Product agent, a Policy agent or a General agent. "
           "Then a customer asks about a package **and** its cancellation in one sentence.")
     plain("Pattern: **manager / worker**. Architecture: **centralized**. The orchestrator is the manager; the three agents are workers. All communication flows through the manager: "
           "customer asks, orchestrator analyses, routes to the right agent, the agent answers back through the orchestrator.")
     dot('digraph { rankdir=LR; ' + NODE + ' Customer [fillcolor="#fff3bf"]; Orchestrator [fillcolor="#ffe3e3"]; Customer -> Orchestrator; '
         'Orchestrator -> Product; Orchestrator -> Policy; Orchestrator -> General; Product -> Orchestrator; Policy -> Orchestrator; General -> Orchestrator; Orchestrator -> Customer; }')
-    st.subheader("Lab 2 · Route a question")
+    st.subheader("Lab A · Route a question (the PDF's desk)")
     q = pick_query("s6_cq", default=3, extra=[ce.ODD_QUERY])
     c1, c2 = st.columns(2)
     split = c1.checkbox("The orchestrator splits mixed questions across several agents", False, key="s6_csplit")
@@ -276,19 +443,21 @@ def orchestrator(query):
     route = router_llm.invoke("Which agent should answer: product, policy or general?\\n" + query).content.strip().lower()   # 1 model call
     agents = {"product": product_agent, "policy": policy_agent, "general": general_agent}
     return agents.get(route, general_agent).invoke(query)                                                                 # 1 more model call""")
-    st.success("**Takeaway.** Centralized = control and simplicity. The price: one bottleneck, one point of failure, and routing mistakes lose half a mixed question.")
-    st.button("Next: decentralized →", on_click=goto, args=(PAGES[3],), type="primary")
+    lab_6a_central()
+    st.success("**Takeaway.** Centralized = control and simplicity. The price: one bottleneck, one point of failure, a model call at every hand-off, "
+               "and experts who cannot fill each other's gaps.")
+    st.button("Next: decentralized →", on_click=goto, args=(PAGES[4],), type="primary")
 
 
 # ----------------------------------------------------------------------------------------
-# Page 3: decentralized
+# Page 4: decentralized
 # ----------------------------------------------------------------------------------------
 def page_decentral():
-    st.header("3 · Decentralized support desk")
+    st.header("4 · Decentralized support desk")
     story("Version two has no orchestrator. A customer can message any agent. Each agent asks: 'Can I answer this? If not, who can?' and forwards the rest to a peer.")
     plain("Pattern: **peer / swarm**. Architecture: **decentralized**. No central controller; agents collaborate through local rules written in their prompts. Flexible and resilient, but harder to predict and debug.")
     dot('digraph { rankdir=LR; ' + NODE + ' Customer [fillcolor="#fff3bf"]; Customer -> General; Product -> Policy [dir=both]; Policy -> General [dir=both]; General -> Product [dir=both]; }')
-    st.subheader("Lab 3 · Where does the customer land, and does the question reach an owner?")
+    st.subheader("Lab A · Where does the customer land, and does the question reach an owner? (the PDF's desk)")
     q = pick_query("s6_dq", default=3, extra=[ce.ODD_QUERY])
     c1, c2, c3 = st.columns(3)
     entry = c1.selectbox("Customer messages this agent first", ce.DOMAINS, index=2, key="s6_dentry")
@@ -306,20 +475,22 @@ def page_decentral():
     show_code("The local rule each peer follows (in its prompt)", """
 PEER_RULE = '''You are the {name}. If the customer's question is something you can answer, answer it.
 If not, reply with FORWARD:<agent> naming the peer best able to help. Never forward the same question twice.'''""")
-    st.success("**Takeaway.** Decentralized = resilience and flexibility. The price: more messages, loops, and answers nobody can fully explain. Always set a hop limit and a final fallback.")
-    st.button("Next: hybrid →", on_click=goto, args=(PAGES[4],), type="primary")
+    lab_6a_decentral()
+    st.success("**Takeaway.** Decentralized = resilience and flexibility. The price: more messages, loops, parts nobody checks, and answers nobody can fully explain. "
+               "Always set a hop limit and a final fallback.")
+    st.button("Next: hybrid →", on_click=goto, args=(PAGES[5],), type="primary")
 
 
 # ----------------------------------------------------------------------------------------
-# Page 4: hybrid
+# Page 5: hybrid
 # ----------------------------------------------------------------------------------------
 def page_hybrid():
-    st.header("4 · Hybrid support desk")
+    st.header("5 · Hybrid support desk")
     story("Version three keeps one orchestrator for routing, but lets the agents talk to each other: the Product agent can ask the Policy agent about cancellation without going back to the boss.")
     plain("Pattern: **federated teams / specialists** (also fits a **pipeline**, for example Research → Write → Edit, which needs orchestration to enforce the order). Architecture: **hybrid**. "
           "Coordination comes from the orchestrator; flexibility from peers who can collaborate directly.")
     dot('digraph { rankdir=LR; ' + NODE + ' Customer [fillcolor="#fff3bf"]; Orchestrator [fillcolor="#ffe3e3"]; Customer -> Orchestrator; Orchestrator -> Product; Product -> Policy [dir=both, label="direct"]; Product -> General [dir=both, label="direct"]; Policy -> General [dir=both]; }')
-    st.subheader("Lab 4 · Route once, then ask peers")
+    st.subheader("Lab A · Route once, then ask peers (the PDF's desk)")
     q = pick_query("s6_hq", default=3, extra=[ce.ODD_QUERY])
     way = st.radio("When an agent needs a peer's answer", ["Ask the peer directly", "Go back through the orchestrator"], key="s6_hway", horizontal=True)
     predict("the Product agent needs the cancellation policy. Does asking the Policy agent directly save model calls?")
@@ -333,22 +504,23 @@ def page_hybrid():
              {"Peer questions": "via the orchestrator", "Model calls": (other if way.startswith("Ask") else r)["calls"]}])
     notice("Direct messages skip the orchestrator's extra routing call, but then the orchestrator no longer sees every message. Hybrid always trades **oversight** for **efficiency**; log the direct messages too.")
     st.markdown("**What hybrid promises:** coordination through the orchestrator, flexibility because agents collaborate without waiting for routing, and resilience because both styles coexist. "
-                "Page 5 tests that last claim: it only holds if you build a fallback.")
+                "Page 6 tests that last claim: it only holds if you build a fallback.")
     show_code("A specialist that can ask a peer", """
 def product_agent(query):
     answer = product_llm.invoke(query)                         # the part it owns
     if "cancel" in query.lower():
         answer += " " + policy_agent(query)                    # a direct call to a peer: no orchestrator in between
     return answer""")
-    st.success("**Takeaway.** Hybrid = central plan and answer, direct messages in between. The cleverness is in deciding **which** messages may skip the boss.")
-    st.button("Next: compare the three →", on_click=goto, args=(PAGES[5],), type="primary")
+    lab_6a_hybrid()
+    st.success("**Takeaway.** Hybrid = central plan and answer, direct messages in between, and arithmetic in code. The cleverness is in deciding **which** messages may skip the boss.")
+    st.button("Next: compare the three →", on_click=goto, args=(PAGES[6],), type="primary")
 
 
 # ----------------------------------------------------------------------------------------
-# Page 5: compare
+# Page 6: compare
 # ----------------------------------------------------------------------------------------
 def page_compare():
-    st.header("5 · Three designs, one set of questions")
+    st.header("6 · Three designs, one set of questions")
     plain("The fair way to compare architectures is to give them the **same work** and count. Five customer questions go through every design below: three simple, two that mix a package with a policy.")
     c1, c2, c3, c4 = st.columns(4)
     down = c1.selectbox("Which agent is down?", ["nobody", "orchestrator", "product", "policy", "general"], key="s6_down")
@@ -381,20 +553,21 @@ def page_compare():
     st.markdown("Design patterns define **how agents interact**; architectures define **how the system is structured**: like how people use a building versus its blueprint. "
                 "Every desk above has both: the pattern says who talks to whom, the architecture says who decides.")
     table_show(ce.PATTERN_TABLE)
+    lab_6a_scoreboard()
     st.success("**Takeaway.** No architecture wins everywhere. Centralized is simple and fragile at the centre; decentralized is robust at the centre and chatty; hybrid takes the best of both only if you build the fallback.")
-    st.button("Next: why a framework? →", on_click=goto, args=(PAGES[6],), type="primary")
+    st.button("Next: why a framework? →", on_click=goto, args=(PAGES[7],), type="primary")
 
 
 # ----------------------------------------------------------------------------------------
-# Page 6: framework
+# Page 7: framework
 # ----------------------------------------------------------------------------------------
 def page_framework():
-    st.header("6 · Why a framework? LangChain vs CrewAI")
+    st.header("7 · Why a framework? LangChain vs CrewAI")
     story("Prasad built three desks by hand. Each time he wrote the routing, the hand-offs and the message log himself. His next project has six agents. He starts to wonder whether somebody already wrote the plumbing.")
     st.markdown("**What LangChain by hand costs you:** manual orchestration of the agents, complicated agent-to-agent communication, and extra code for each custom tool or API. "
                 "**What CrewAI is:** an open-source, Python-based framework for orchestrating teams of AI agents. Think of a virtual workplace: the **crew** is the organisation, each **agent** a team member with a role, "
                 "the **tasks** are the jobs, and the **process** says how the work runs (step by step, or under a manager).")
-    st.subheader("Lab 6 · What does your project need?")
+    st.subheader("Lab · What does your project need?")
     needs = [r["Need"] for r in ce.FRAMEWORK_TABLE]
     chosen = st.multiselect("Tick everything your project needs", needs, default=needs[:4], key="s6_needs")
     predict("choose only 'One agent with a tool and a chat memory'. Is a framework worth it?")
@@ -411,16 +584,262 @@ def page_framework():
     st.subheader("A fair view of the trade-off (our addition to the notebook)")
     c1, c2 = st.columns(2)
     c1.markdown("**A framework gives you**\n- roles, tasks and hand-offs as ready-made objects\n- built-in memory and tool attachment\n- fast prototyping of a team\n- a common vocabulary for a team")
-    c2.markdown("**A framework costs you**\n- some control: the loop is hidden inside the library\n- harder debugging when something goes wrong inside\n- another dependency whose interfaces change between versions\n- more model calls you did not write (see page 9)")
+    c2.markdown("**A framework costs you**\n- some control: the loop is hidden inside the library\n- harder debugging when something goes wrong inside\n- another dependency whose interfaces change between versions\n- more model calls you did not write (see pages 11 and 12)")
+    st.markdown("**The same comparison from notebook 6B, after building both:**")
+    table_show(ce.CREWAI_VS_LANGCHAIN_6B)
     st.success("**Takeaway.** Use LangChain's parts for one agent. Reach for a team framework when the coordination code starts to be bigger than the agents themselves.")
-    st.button("Next: CrewAI building blocks →", on_click=goto, args=(PAGES[7],), type="primary")
+    st.button("Next: how CrewAI works →", on_click=goto, args=(PAGES[8],), type="primary")
 
 
 # ----------------------------------------------------------------------------------------
-# Page 7: CrewAI blocks
+# Notebook 6A labs used on pages 3, 4, 5 and 6
+# ----------------------------------------------------------------------------------------
+def notebook_message(key: str) -> str:
+    return st.selectbox("Customer message (notebook 6A)", le.MESSAGES, index=0, key=key,
+                        help="The first one is the notebook's three-part message: a greeting, a price, and a refund.")
+
+
+def show_6a_result(r: dict, msg: str):
+    printed = r["run"].printed()
+    st.markdown("**What the notebook prints**")
+    st.code(printed or "(nothing printed)", language=None)
+    if r["run"].error:
+        st.error(r["run"].error)
+        return
+    sc = r["score"]
+    if msg == le.MULTI_PART:
+        line = "Greeting %s · Snow Valley price Rs 3,200 %s · Refund Rs 3,600 %s" % (
+            "✅" if sc["greeting"] else "❌", "✅" if sc["price"] else "❌", "✅" if sc["refund"] else "❌")
+        (st.success if all(sc.values()) else st.error)("**Customer receives:** " + r["answer"] + "\n\n" + line)
+    else:
+        st.success("**Customer receives:** " + r["answer"])
+    with st.expander("Message log (who said what to whom)"):
+        df_show([{"#": i + 1, **e} for i, e in enumerate(r["run"].events)])
+
+
+def lab_6a_central():
+    st.subheader("Lab B · Notebook 6A: the boss's tools are the experts")
+    picture("a_central.png", "The centralized desk in notebook 6A: the orchestrator's only tools are the three experts.", 520)
+    st.markdown("In notebook 6A the boss is itself a `create_agent` agent. Its tools are three small functions, `ask_stays_expert`, "
+                "`ask_policy_expert` and `ask_general_expert`, and each one runs a whole expert agent. This trick is called **agents as tools**. "
+                "The routing rules go in the boss's `system_prompt`.")
+    msg = notebook_message("s6_c6a_msg")
+    c1, c2, c3 = st.columns(3)
+    limit = c1.slider("Step limit (recursion_limit)", 2, 15, 9, key="s6_c6a_limit")
+    together = c2.checkbox("Gemini asks all the experts in one step", False, key="s6_c6a_tog",
+                           help="Gemini sometimes requests several tools in one model call. Then the run needs far fewer steps.")
+    boss_sum = c3.checkbox("The boss notices the missing price and does the sum itself", False, key="s6_c6a_sum")
+    predict("set the step limit to 4 with the three-part message. Will the boss manage all three parts? Then tick 'all in one step'.")
+    r = le.centralized(msg, limit, together, boss_sum)
+    metric_row([("Model calls", r["run"].calls), ("Steps used / needed", "%d / %d" % (r["steps_run"], r["steps_needed"])),
+                ("Smallest limit that works", r["steps_needed"] + 1)])
+    show_6a_result(r, msg)
+    if msg == le.MULTI_PART and not r["stopped"]:
+        if r.get("boss_math"):
+            st.warning("The boss got there, but only by asking the stays expert again (more steps, more calls) and then doing the "
+                       "arithmetic **in its own head**. That number was not computed by code, so nothing guarantees it. The hybrid desk (page 5) does it properly.")
+        else:
+            notice("Look at the refund. The policy expert knows the rule (5 days before = 50% back), but not what the couple paid: only the stays expert "
+                   "knows River Bend's price. In this design experts never talk to each other, so the answer stops at '50% of what you paid'.")
+    st.caption("Even 'Hi, how are you?' costs 3 model calls here: the boss decides, the expert answers, the boss passes the answer on. Central control has a price.")
+    with st.expander("What the boss's model sees for ask_stays_expert (generated by LangChain from the function)"):
+        st.json(le.TOOL_SCHEMAS.get("ask_stays_expert", {}))
+    show_code("The three workers (notebook 6A)", le.CODE["workers"])
+    show_code("Agents as tools, the routing rules, and the boss (notebook 6A)", le.CODE["agents_as_tools"])
+
+
+def lab_6a_decentral():
+    st.subheader("Lab B · Notebook 6A: 'is this mine?'")
+    picture("a_decentral.png", "The decentralized desk in notebook 6A: each expert asks itself 'is this mine?' and answers or passes it on.", 640)
+    st.markdown("No boss. The message goes to the experts in a fixed order. Each one makes a small **structured** yes/no decision "
+                "(`{\"handle_it\": true/false, \"reason\": ...}`, one model call). If yes, it answers; if not, it passes the message on. The general expert is the last resort. "
+                "A `for` loop means the message can never go round in circles.")
+    msg = notebook_message("s6_d6a_msg")
+    approach = st.radio("How do the experts handle a message with several parts?",
+                        ["As in the notebook: the first expert that says 'mine' answers",
+                         "Approach 3 (homework): answer your own part, pass the rest on"], key="s6_d6a_app")
+    predict("with the three-part message, which expert answers first, and what happens to the other two parts?")
+    r = le.decentralized(msg, "relay" if approach.startswith("Approach 3") else "notebook")
+    metric_row([("Model calls", r["run"].calls), ("Parts in the message", len(r["parts"]))])
+    show_6a_result(r, msg)
+    if msg == le.MULTI_PART:
+        if approach.startswith("As in"):
+            notice("The stays expert sees a part it can answer, says 'mine', and answers **only that part**. Nobody greets the couple and the refund "
+                   "question is lost, because once an expert takes a message, nobody else sees it. Each agent has a **local view**, and nobody checks "
+                   "that the **whole** message was answered. It is the cheapest desk, and the least complete.")
+        else:
+            notice("Now all three parts get an owner, with no boss. But the refund amount is **still** missing: the policy expert cannot get River Bend's "
+                   "price, because in this design experts only pass messages along; they cannot ask each other. Decentralization spreads control, not knowledge.")
+    st.markdown("**How could a team of equals handle a multi-part message?** The session plan's six approaches:")
+    table_show(le.APPROACHES)
+    show_code("The decentralized desk (notebook 6A)", le.CODE["decentral"])
+
+
+def lab_6a_hybrid():
+    st.subheader("Lab B · Notebook 6A: a light router, and experts who ask each other")
+    picture("a_hybrid.png", "The hybrid desk in notebook 6A: the router only splits; the policy expert asks the stays expert for a price directly.", 520)
+    st.markdown("Three steps: **split** (a router makes one structured-output call that labels each part with an expert, and answers nothing), "
+                "**answer each part** (each expert works on its own part), **combine** (one call writes one warm reply). The policy expert gets two new tools: "
+                "`ask_stays_peer` (a direct message to the stays expert, with no router in between) and `calculate_refund` (the maths, **in code**).")
+    msg = notebook_message("s6_h6a_msg")
+    peer = st.checkbox("The policy expert can ask the stays expert directly (ask_stays_peer)", True, key="s6_h6a_peer")
+    predict("how does the policy expert find out what the couple paid for River Bend Homestay?")
+    r = le.hybrid(msg, peer)
+    metric_row([("Model calls", r["run"].calls), ("Parts found by the router", len(r["parts"]))])
+    show_6a_result(r, msg)
+    if msg == le.MULTI_PART and peer:
+        notice("Read the printed lines from top to bottom: the router split the message three ways; the general expert greeted; the stays expert gave "
+               "Snow Valley's price; and the policy expert, needing River Bend's price, **asked the stays expert directly**, then let code do the sum: "
+               "Rs 2,400 × 3 nights = Rs 7,200, and 50% back is Rs 3,600. (Its own 'used' lines appear after its chat with the stays expert, because an "
+               "agent's steps are printed when it finishes.) That direct message between experts is what makes this a hybrid.")
+    st.markdown("**The refund, in code:** `calculate_refund(2400, 3, 5)` → `%s`" % le.calculate_refund(2400, 3, 5))
+    show_code("The router's shape (structured output)", le.CODE["router_schema"])
+    show_code("The peer tool, the policy expert with peers, and the hybrid desk (notebook 6A)", le.CODE["hybrid"])
+
+
+def lab_6a_scoreboard():
+    st.subheader("Lab B · Notebook 6A: the same three-part message, three desks")
+    st.markdown("Which desk answered best, and at what cost? Each answer is checked for the two numbers that matter: **Rs 3,200** (Snow Valley's price) "
+                "and **Rs 3,600** (the refund).")
+    rows = le.scoreboard()
+    df_show([{k: ("✅" if v is True else "❌" if v is False else v) for k, v in r.items() if not k.startswith("_")} for r in rows])
+    with st.expander("Each desk's answer"):
+        for r in rows:
+            st.markdown("**%s:** %s" % (r["Desk"], r["_answer"]))
+    notice("A typical run: the **decentralized** desk is cheapest but answers one part. The **centralized** desk answers more, but the refund amount depends "
+           "on the boss noticing the missing price. The **hybrid** desk gets both numbers right, because the router gave every part an owner and the policy "
+           "expert could ask its peer. It is not the cheapest: correctness costs a few more calls.")
+    st.markdown("**What LangChain left us doing by hand:** the `ask_` wrapper functions, the peer list and its loop, the router shape, and the combining step. "
+                "LangChain gave us good agents; **the teamwork between them was all our own code.** That is the gap CrewAI fills (pages 8 to 12).")
+
+
+# ----------------------------------------------------------------------------------------
+# Page 8: How CrewAI works
+# ----------------------------------------------------------------------------------------
+def page_how_crewai():
+    st.header("8 · How CrewAI works")
+    story("Prasad's LangChain desks worked, but most of his code was teamwork: wrappers, loops, a router, a combining step. "
+          "CrewAI promises that he can describe the team instead of writing it. What does it actually do with his description?")
+    plain("**CrewAI** is an open-source Python framework for teams of agents. Instead of writing the teamwork, you **describe** it: who is on the team "
+          "(agents), what jobs need doing (tasks), and in what order (the process). Then CrewAI writes the prompts, runs each agent's loop, passes "
+          "results between tasks, and lets agents delegate to each other. You focus on the **what**; CrewAI handles the **how**.")
+    picture("b_components.png", "A Crew holds Agents and Tasks; the Process decides how the tasks run.", 760)
+    table_show([
+        {"Block": "Agent", "What it is": "A worker with a role, goal, backstory and tools", "Like...": "An employee"},
+        {"Block": "Task", "What it is": "A job: what to do (description), what good looks like (expected_output), who does it (agent), what it reads first (context)", "Like...": "A ticket on a to-do board"},
+        {"Block": "Crew", "What it is": "The team: its agents and its tasks, and kickoff() to start the work", "Like...": "A project team (or a publishing house)"},
+        {"Block": "Process", "What it is": "How the tasks run: in order (sequential), or under a manager (hierarchical)", "Like...": "How the team is managed"},
+    ])
+
+    st.subheader("The same agent in LangChain and in CrewAI")
+    c1, c2 = st.columns(2)
+    c1.markdown("**LangChain (notebook 6A)**")
+    c1.code('''agent = create_agent(
+    model=llm,
+    tools=[],
+    system_prompt="You are a friendly travel buddy for couples "
+                  "in India. You suggest short, specific ideas.",
+)''', language="python")
+    c2.markdown("**CrewAI (notebook 6B)**")
+    c2.code('''travel_buddy = Agent(
+    role="Travel buddy",
+    goal="Suggest short, specific trip ideas for couples in India.",
+    backstory="You are a friendly traveller who has explored "
+              "every corner of India.",
+    llm=llm,
+)''', language="python")
+    df_show([
+        {"LangChain": "model=llm", "CrewAI": "llm=llm", "What it means": "Which model thinks for the agent"},
+        {"LangChain": "tools=[...]", "CrewAI": "tools=[...]", "What it means": "What it can do"},
+        {"LangChain": "system_prompt=\"...\"", "CrewAI": "role=\"...\"", "What it means": "Its job title"},
+        {"LangChain": "", "CrewAI": "goal=\"...\"", "What it means": "What it is trying to achieve"},
+        {"LangChain": "", "CrewAI": "backstory=\"...\"", "What it means": "Its personality and experience"},
+    ])
+    st.caption("CrewAI combines role, goal and backstory into the system prompt for you. Lab 1 shows exactly how.")
+
+    st.subheader("Lab 1 · What CrewAI actually sends to the model")
+    st.caption("These prompts were **recorded from the real CrewAI library (version 1.15.28)**, run with a stand-in model that saves every message and replies "
+               "from a script. So every prompt below is CrewAI's own; only the replies are scripted. (With Gemini, CrewAI may pass the tool list through "
+               "Gemini's native tool calling instead of inside the text. The role, goal, backstory, task and context parts are the same.)")
+    scen = st.radio("Scenario", list(ce.RECORDED), format_func=lambda k: ce.RECORDED[k]["title"], key="s6_cr_scen")
+    st.markdown("**The code that produced it (notebook 6B)**")
+    st.code(ce.RECORDED[scen]["code"], language="python")
+    calls = ce.recorded_calls(scen)
+    metric_row([("Model calls", len(calls)), ("Agents involved", len({c["agent"] for c in calls}))])
+    for c in calls:
+        with st.expander("Model call %d · %s" % (c["n"], c["agent"]), expanded=(c["n"] == 1)):
+            for m in c["messages"]:
+                st.caption("**%s message**" % m["role"])
+                code_block(m["content"])
+            st.markdown("**The model's reply (scripted):**")
+            code_block(c["reply"])
+            if c["after"]:
+                st.info("**What CrewAI did next:** " + c["after"])
+    st.markdown("**Where each part of the prompt comes from**")
+    table_show(ce.PROMPT_PARTS)
+    notice("Nothing here is magic: an agent is a system prompt built from role, backstory and goal; a task is a user message built from the description, "
+           "the expected_output and the context. The ReAct loop (Thought, Action, Observation, Final Answer) is the same one you built in LangChain; CrewAI writes its instructions for you.")
+
+    st.subheader("Running it: kickoff, kickoff_async and the result")
+    c1, c2 = st.columns(2)
+    c1.markdown("**One agent on its own**")
+    c1.code('''result = await travel_buddy.kickoff_async(
+    "Suggest one weekend trip from Mumbai for a quiet couple.")
+print(result.raw)            # the answer text''', language="python")
+    c2.markdown("**A crew**")
+    c2.code('''result = await blog_crew.kickoff_async(inputs={"topic": "..."})
+print(result.raw)            # the last task's output
+for t in result.tasks_output:   # one entry per task
+    print(t.agent, t.raw)''', language="python")
+    st.markdown("- **Why `await`?** Notebooks (Colab and VS Code) already run an event loop, and CrewAI must run inside it. `await` means *wait here until the answer is ready*. "
+                "In a normal Python script, write `crew.kickoff(...)` instead.\n"
+                "- **The boxes CrewAI prints** (for example 'LiteAgent Started') are CrewAI showing what it is doing. Your answer is printed below them.\n"
+                "- **`inputs={...}`** fills every `{placeholder}` in goals and task descriptions, so one crew works for any topic.")
+
+    st.subheader("Tools in CrewAI")
+    st.code('''from crewai.tools import tool
+
+@tool("Travel guide")                     # a decorator: "this function is a tool"
+def search_travel_guide(place: str) -> str:
+    """Read the Wikivoyage travel guide for a place, e.g. Old Manali. Returns what to see, do and eat there."""
+    ...''', language="python")
+    st.markdown("The **docstring** is what the agent reads to decide when to use the tool, exactly as in LangChain. In the recorded prompts above, notice that "
+                "CrewAI writes the tool's name as **`travel_guide`**, not 'Travel guide'.")
+
+    st.subheader("Settings worth knowing (checked on CrewAI 1.15)")
+    table_show([
+        {"Setting": "pip install \"crewai[google-genai]\"", "What it does": "The [google-genai] part installs CrewAI's connection to Gemini; without it CrewAI cannot use Gemini models"},
+        {"Setting": "LLM(model=\"gemini/gemini-3.5-flash-lite\")", "What it does": "The model the agents use; 'gemini/' says which company makes it"},
+        {"Setting": "os.environ[\"CREWAI_TRACING_ENABLED\"] = \"false\"", "What it does": "Answers CrewAI's first-run tracing question in advance, so a notebook does not wait forever"},
+        {"Setting": "verbose=True", "What it does": "Prints the agent's thinking: Thought, Action, Observation"},
+        {"Setting": "max_rpm=4", "What it does": "At most 4 model calls a minute (CrewAI's own rate limiter): stays inside the free tier"},
+        {"Setting": "allow_delegation=True", "What it does": "Default False. Gives the agent two tools: delegate work to a coworker, ask a coworker a question (page 12)"},
+        {"Setting": "max_iter (default 25)", "What it does": "The agent's step limit: like recursion_limit in LangChain"},
+        {"Setting": "memory=True on a Crew", "What it does": "Memory across runs. Needs an embedding model (OpenAI's by default, so with only a Gemini key set embedder= to Gemini's) and makes extra calls"},
+    ])
+
+    st.subheader("What CrewAI did for us, and what it didn't")
+    table_show(ce.CREWAI_VS_LANGCHAIN_6B)
+    st.warning("CrewAI removed most of the teamwork **code**. It did not remove a single **decision**: you still choose the roles, write the goals and backstories "
+               "(which are prompts), decide which tasks to assign, and pick the process. And it adds model calls you did not write (pages 11 and 12).")
+    show_code("Notebook 6B's setup cell", '''%pip install -q "crewai[google-genai]>=1.15" requests python-dotenv
+
+import os
+os.environ["CREWAI_TRACING_ENABLED"] = "false"
+from crewai import Agent, Task, Crew, Process, LLM
+
+llm = LLM(model="gemini/gemini-3.5-flash-lite", api_key=os.environ["GOOGLE_API_KEY"])''')
+    st.success("**Takeaway.** A CrewAI agent is a prompt built from role, goal and backstory. A task is a message built from description, expected_output and "
+               "context. The crew runs them, in order or under a manager. Next: build one yourself.")
+    st.button("Next: CrewAI building blocks →", on_click=goto, args=(PAGES[9],), type="primary")
+
+
+
+# ----------------------------------------------------------------------------------------
+# Page 9: CrewAI blocks
 # ----------------------------------------------------------------------------------------
 def page_blocks():
-    st.header("7 · CrewAI building blocks")
+    st.header("9 · CrewAI building blocks")
     story("Prasad rewrites his research-and-blog team in CrewAI. He finds he is filling in four kinds of object instead of writing coordination code.")
     df_show([
         {"Block": "Crew", "What it is": "The container and orchestrator: which agents, which tasks, how they are connected", "Analogy": "The publishing house managing the whole project"},
@@ -428,7 +847,7 @@ def page_blocks():
         {"Block": "Task", "What it is": "A unit of work: a goal (description), an expected output, and an assigned agent", "Analogy": "A ticket on a Jira board"},
         {"Block": "Process", "What it is": "How tasks run: sequentially, or hierarchically under a manager", "Analogy": "The workflow the team follows"},
     ])
-    st.subheader("Lab 7 · Write the crew and watch the code")
+    st.subheader("Lab · Write the crew and watch the code")
     cfg = copy.deepcopy(ce.DEFAULT_CREW)
     cols = st.columns(2)
     for col, (k, a) in zip(cols, cfg["agents"].items()):
@@ -456,23 +875,33 @@ def page_blocks():
     st.markdown("**The CrewAI code this configuration corresponds to**")
     st.code(ce.crew_code(cfg, inputs), language="python")
     notice("Notice what is **not** here: no loop, no hand-off code, no message passing. `context=[task1]` is the entire 'the writer uses the research' instruction. "
-           "The notebook gives the same example with the same fields. Running real CrewAI also needs `pip install crewai` and a model key; this page only builds the code for you.")
+           "Running real CrewAI also needs `pip install \"crewai[google-genai]\"` and a Gemini key; this page only builds the code for you. "
+           "The code above was checked to build a real Crew with CrewAI 1.15.")
+    st.markdown("**Notebook 6B's first steps, in order** (each adds one idea):")
+    table_show([
+        {"Step": "1 · One agent", "Code": "await travel_buddy.kickoff_async(\"Suggest one weekend trip...\")", "The idea": "An agent is role + goal + backstory instead of a system prompt. Try a grumpy backstory: same question, different answer"},
+        {"Step": "2 · A tool", "Code": "@tool(\"Travel guide\") above a function; tools=[search_travel_guide]; verbose=True; max_rpm=4", "The idea": "The docstring tells the agent when to use the tool; verbose shows Thought / Action / Observation"},
+        {"Step": "3 · A task", "Code": "Task(description=..., expected_output=\"Exactly three bullet points...\", agent=local_guide)", "The idea": "Separate what to do from who does it; expected_output shapes the answer. Even one agent runs inside a Crew"},
+        {"Step": "4 · Two agents in a row", "Code": "context=[research_task], {topic}, Process.sequential", "The idea": "Page 10"},
+    ])
     st.success("**Takeaway.** In CrewAI you describe **what** (roles, tasks, who feeds whom) and the crew handles **how**.")
-    st.button("Next: run it, sequentially →", on_click=goto, args=(PAGES[8],), type="primary")
+    st.button("Next: run it, sequentially →", on_click=goto, args=(PAGES[10],), type="primary")
 
 
 # ----------------------------------------------------------------------------------------
-# Page 8: sequential
+# Page 10: sequential
 # ----------------------------------------------------------------------------------------
 def page_sequential():
     b = get_backend()
-    st.header("8 · Process: sequential")
+    st.header("10 · Process: sequential")
     plain("Sequential means tasks run in a fixed order, and one task's output feeds the next: research → write → edit. Best when later work depends on earlier results. "
           "In the notebook the writer receives the research through `context=[task1]`.")
     cfg = crew_cfg()
     inputs = crew_inputs()
-    st.caption("Using the agents and tasks you wrote on page 7 (or the notebook's defaults if you skipped it). Topic: **%s**" % inputs["topic"])
-    st.subheader("Lab 8 · kickoff() and break it")
+    picture("crewai_sequential.jpg", "From the session plan: research, then writing, then editing, each task feeding the next. "
+            "The lab below runs the first two steps; adding the editor is notebook 6B's first exercise.")
+    st.caption("Using the agents and tasks you wrote on page 9 (or the notebook's defaults if you skipped it). Topic: **%s**" % inputs["topic"])
+    st.subheader("Lab · kickoff() and break it")
     c1, c2, c3 = st.columns(3)
     use_ctx = c1.checkbox("Task 2 uses context=[task1]", True, key="s6_ctx")
     wrong = c2.checkbox("List the writer's task FIRST", False, key="s6_wrongorder")
@@ -504,32 +933,45 @@ def page_sequential():
     notice("Two of the three mistakes are caught by the (mini) framework before any model is called: a missing input, and a task that needs another task's output before it exists. "
            "The third, removing the context, is silent: nothing errors, the answer is just worse. Silent failures are the dangerous ones.")
     st.markdown("**Workflow summary:** the crew receives a topic → the research agent collects 3 to 5 facts → the writer turns them into a blog summary → the crew manages the dependency and runs them in order.")
-    show_code("The notebook's sequential crew", """
-crew = Crew(agents=[research_agent, writer_agent], tasks=[task1, task2], process=Process.sequential, verbose=True)
-crew.kickoff(inputs={"topic": "The future of electrical vehicles"})""")
+    show_code("The sequential crew (notebook 6B, step 4)", """
+blog_crew = Crew(agents=[researcher, writer], tasks=[research_task, writing_task], process=Process.sequential, max_rpm=4)
+result = await blog_crew.kickoff_async(inputs={"topic": "a quiet weekend in Old Manali"})   # in a script: blog_crew.kickoff(...)
+
+for task_output in result.tasks_output:      # one entry per task: see what each agent produced
+    print(f"=== {task_output.agent} ===")
+    print(task_output.raw)""")
+    st.caption("Want to see the exact prompt the writer receives, with the researcher's output pasted in as context? Page 8, Lab 1, scenario 'A two-task pipeline'.")
     st.success("**Takeaway.** Sequential is the pipeline pattern with the plumbing done for you. Check **what flows between tasks**, not just that every task ran.")
-    st.button("Next: add a manager →", on_click=goto, args=(PAGES[9],), type="primary")
+    st.button("Next: add a manager →", on_click=goto, args=(PAGES[11],), type="primary")
 
 
 # ----------------------------------------------------------------------------------------
-# Page 9: hierarchical
+# Page 11: hierarchical
 # ----------------------------------------------------------------------------------------
 def page_hierarchical():
     b = get_backend()
-    st.header("9 · Process: hierarchical (a manager)")
-    plain("In a hierarchical process a manager delegates tasks to the agents and checks their work: CrewAI's version of the **manager / worker** pattern. "
-          "You must supply either a **manager_llm** (a model acting as manager, the lighter way) or a **manager_agent** (a full agent with a role, instructions and tools).")
+    st.header("11 · Process: hierarchical (a manager)")
+    plain("In a hierarchical process a **manager** decides who does each task and can check the work: CrewAI's version of the **manager / worker** pattern. "
+          "You supply either a **manager_llm** (CrewAI builds its own 'Crew Manager' agent around that model: the lighter way) or a **manager_agent** "
+          "(your own Agent with a role, goal and backstory). Two rules from notebook 6B: **leave the tasks' `agent` empty** so the manager can choose, and "
+          "**a manager cannot have tools**: its only tools are the two delegation tools CrewAI gives it.")
+    st.warning("**The PDF's manager_agent example gives the manager `tools=[search_tool, code_executor]` 'to verify work'. Current CrewAI refuses that:** "
+               "checked on CrewAI 1.15, `kickoff()` fails with *'Manager agent should not have tools'*. A manager checks work through its **instructions** "
+               "(goal and backstory) and by asking coworkers; the tools belong to the workers.")
     cfg = crew_cfg()
     inputs = crew_inputs()
-    st.subheader("Lab 9 · The manager that checks")
+    st.subheader("Lab · The manager that checks")
     c1, c2, c3 = st.columns(3)
-    kind = c1.radio("Manager", ["manager_llm (lighter)", "manager_agent (role + tools)", "No manager"], key="s6_mgr")
-    tools = c2.checkbox("Give the manager_agent a check tool", True, key="s6_mgrtools", disabled=not kind.startswith("manager_agent"),
-                        help="In the notebook the manager agent has tools=[search_tool, code_executor] 'to verify work'.")
+    kind = c1.radio("Manager", ["manager_llm (CrewAI's default manager)", "manager_agent told to check expected_output",
+                                "manager_agent given tools (the PDF's example)", "No manager"], key="s6_mgr2")
+    assigned = c2.checkbox("Assign each task to an agent (agent=...)", False, key="s6_assigned",
+                           help="Notebook 6B, exercise 3: if a task names its agent, the manager has no choice. It can only pass the task on.")
     sloppy = c3.checkbox("The researcher is sloppy (returns only 2 facts)", True, key="s6_sloppy")
-    predict("the task asks for '3-5 facts' but the researcher returns 2. Which manager notices?")
-    manager = None if kind.startswith("No") else ({"kind": "llm"} if kind.startswith("manager_llm") else {"kind": "agent", "has_tools": tools})
-    r = ce.run_crew(cfg, inputs, "hierarchical", manager, sloppy, True, live_backend())
+    predict("the task asks for '3-5 facts' but the researcher returns 2. Which manager notices? Then pick the PDF's manager with tools.")
+    manager = (None if kind.startswith("No") else {"kind": "llm", "assigned": assigned} if kind.startswith("manager_llm")
+               else {"kind": "agent", "checks": True, "assigned": assigned} if "told to check" in kind
+               else {"kind": "agent", "has_tools": True, "assigned": assigned})
+    r = ce.run_crew(cfg, inputs, "hierarchical", manager, sloppy, True, live_backend(), assigned=assigned)
     if r["error"]:
         st.error("**kickoff() would stop here:** " + r["error"])
     else:
@@ -551,16 +993,73 @@ def page_hierarchical():
     df_show(ce.process_costs(cfg, inputs, sloppy))
     notice("Sequential used 2 calls. A manager adds planning and final assembly. A manager that **checks** adds a review per task, and more when it sends work back. "
            "That is the price of the hierarchy: the check bought a correct 4-fact result for 8 calls instead of an unchecked 2-fact result for 4. Whether that is worth it is a per-feature decision.")
-    st.markdown("**manager_llm or manager_agent?** An LLM manager is quick to set up but has no instructions of its own and no tools. An agent manager can be given a role, rules and tools to verify work: more power, more to maintain.")
+    if assigned and not r["error"]:
+        st.info("With every task assigned, the log shows 'delegate (no choice)': the manager can only pass each task to the agent you named. "
+                "You get a pipeline with a manager in the middle, and its extra model calls. Leave tasks unassigned when you want the manager to choose.")
+    st.markdown("**manager_llm or manager_agent?** With `manager_llm`, CrewAI builds a standard manager for you (its prompt is recorded on page 8: "
+                "'You are Crew Manager...'). With `manager_agent` you write the manager's role, goal and backstory yourself, so you can tell it **what to check** "
+                "(for example 'send back research with fewer than 3 facts'). Either way, the manager gets no tools of its own.")
+    st.markdown("**In the log of a real run**, look for **`delegate_work_to_coworker`** (or 'Delegate work to coworker'): that is the manager handing part of the job "
+                "to a worker. Nobody told it the order; it decided.")
     st.markdown("**The CrewAI code for this crew**")
-    st.code(ce.crew_code(cfg, inputs, "hierarchical", manager or {"kind": "llm"}), language="python")
-    st.caption("In this demo the 'check' is a simple rule (count the bullets). In real CrewAI the manager is itself a model, which can miss problems or raise false alarms.")
+    code_mgr = dict(manager or {"kind": "llm"})
+    code_mgr.pop("has_tools", None)
+    st.code(ce.crew_code(cfg, inputs, "hierarchical", code_mgr), language="python")
+    st.caption("In this demo the 'check' is a simple rule (count the bullets). In real CrewAI the manager is itself a model, which can miss problems or raise false alarms. "
+               "The code above was checked to build a real Crew with CrewAI 1.15 (without tools on the manager).")
     st.success("**Takeaway.** A manager only helps if it can **check** something. A manager that accepts everything is just extra calls.")
-    st.button("Next: review →", on_click=goto, args=(PAGES[10],), type="primary")
+    st.button("Next: agents asking each other →", on_click=goto, args=(PAGES[12],), type="primary")
 
 
 # ----------------------------------------------------------------------------------------
-# Page 10: review
+# Page 12: Agents asking each other (allow_delegation)
+# ----------------------------------------------------------------------------------------
+def page_delegation():
+    st.header("12 · Agents asking each other")
+    story("DilSeTrips' copywriter writes homepage blurbs. It is good with words but has no tools; the fact checker can read the travel guide. "
+          "Prasad lets the copywriter ask.")
+    plain("Give an agent **`allow_delegation=True`** and CrewAI hands it two extra tools: **Delegate work to coworker** and **Ask question to coworker** "
+          "(in the prompt they appear as `delegate_work_to_coworker` and `ask_question_to_coworker`). Two agents then collaborate **directly**, with no manager "
+          "in between: CrewAI's version of the peer collaboration in the hybrid desk.")
+    dot('digraph { rankdir=LR; ' + NODE + ' Task [fillcolor="#fff3bf", label="blurb_task"]; Copywriter [fillcolor="#ffe3e3"]; Fact_checker [label="Fact checker"]; '
+        'guide [shape=note, label="travel guide tool"]; Task -> Copywriter; Copywriter -> Fact_checker [label="Ask question\\nto coworker", dir=both, color="#2f9e44", penwidth=2]; '
+        'Fact_checker -> guide [dir=both]; }')
+    st.subheader("Lab · Will the copywriter check its facts?")
+    c1, c2 = st.columns(2)
+    allow = c1.checkbox("allow_delegation=True on the copywriter", True, key="s6_dg_allow")
+    confident = c2.checkbox("The copywriter feels confident (the model skips the question)", False, key="s6_dg_conf", disabled=not allow)
+    predict("untick allow_delegation. The copywriter has no tools. Where do its two 'specific places' come from?")
+    r = ce.delegation(allow, confident)
+    metric_row([("Model calls", r["calls"]), ("Asked the fact checker?", "yes" if r["checked"] else "no")])
+    (st.success if r["checked"] else st.error)("**Blurb:** " + r["blurb"])
+    if not r["checked"]:
+        st.caption("The places in this blurb are invented by the demo script to make the point: with no check, a confident model can name places that do not exist, "
+                   "and nothing in the output tells you it guessed.")
+    show_log(r["log"])
+    notice("allow_delegation=True makes asking **possible**, not **required**. The model decides, and a confident agent may skip the check. In the log of a real run, "
+           "look for `ask_question_to_coworker` (or 'Ask question to coworker'). How would you know if a check was skipped? Only by reading the log, or by a rule "
+           "that refuses a blurb without a recorded check.")
+    st.caption("Want to see the exact prompts for this crew? Page 8, Lab 1, scenario 'A worker asks a coworker' shows all four recorded model calls.")
+
+    st.subheader("Session 5's patterns, in CrewAI")
+    picture("b_patterns.png", "Each design pattern from Session 5 has a natural CrewAI form.", 620)
+    table_show(ce.PATTERNS_IN_CREWAI)
+    st.markdown("**Federated teams (exercise 5):** CrewAI has no 'team of crews' object. Build one crew per team, run each, and combine their results in plain Python. "
+                "Ask both teams for exactly three lines starting with '- ', so combining is easy:")
+    st.code('''destination = await destination_crew.kickoff_async(inputs={"place": "Old Manali"})
+packing = await packing_crew.kickoff_async(inputs={"place": "Old Manali"})
+lines = [l for l in (destination.raw + "\\n" + packing.raw).splitlines() if l.startswith("- ")]
+print("\\n".join(lines))        # integration is your code, as in Session 5''', language="python")
+
+    st.subheader("A word on memory")
+    st.markdown("Inside one run, results already flow between tasks through `context`. For memory **across** runs, CrewAI has `memory=True` on a crew. "
+                "Two things to know first: it needs an **embedding model** (by default OpenAI's, so with only a Gemini key you must set `embedder=` to Gemini's), "
+                "and it makes **extra model calls** to decide what to remember. On the free tier, try it last.")
+    st.success("**Takeaway.** allow_delegation turns a crew of workers into colleagues who can ask each other, at the cost of calls you did not write and checks the model may skip.")
+    st.button("Next: review →", on_click=goto, args=(PAGES[13],), type="primary")
+
+# ----------------------------------------------------------------------------------------
+# Page 13: review
 # ----------------------------------------------------------------------------------------
 QUIZ = [
     ("Message 3 says 'and the visa fee there?' and the agent's memory is off. What happens in the lab?",
@@ -593,11 +1092,29 @@ QUIZ = [
     ("A crew has process hierarchical and no manager. What is needed?",
      ["Nothing", "A manager_llm or a manager_agent", "More tasks", "A second crew"], 1,
      "A hierarchical process must have a manager."),
+    ("The model's reply contains tool_calls=[search_stays(...)]. Who runs search_stays?",
+     ["The model, inside Gemini", "LangChain runs your Python function and adds a ToolMessage", "Nobody: it is just text", "CrewAI"], 1,
+     "The model only requests a tool. Your code (through create_agent) runs it and puts the result back in the message list."),
+    ("The boss must call three experts, one per step. With recursion_limit=4, what happens?",
+     ["It finishes", "GraphRecursionError: the run needs 7 steps (limit at least 8)", "It answers only the greeting", "It calls them in parallel automatically"], 1,
+     "One step per model call and one per round of tool runs: 4 model calls + 3 tool rounds = 7 steps."),
+    ("Why does only the hybrid desk get the Rs 3,600 refund right in notebook 6A?",
+     ["It uses a bigger model", "The policy expert asks the stays expert for the price directly, and calculate_refund does the maths in code", "It skips the greeting", "The router computes it"], 1,
+     "Only that design lets one expert get another's knowledge, and the sum is code, not the model's arithmetic."),
+    ("In CrewAI, where does an agent's backstory end up?",
+     ["In the task description", "In the system prompt, right after 'You are {role}.'", "In a separate memory store", "Nowhere: it is documentation"], 1,
+     "Recorded from CrewAI 1.15: 'You are {role}. {backstory}  Your personal goal is: {goal}'."),
+    ("You give a CrewAI manager_agent tools=[search_tool]. What happens on kickoff()?",
+     ["The manager uses the tool to check work", "It fails: 'Manager agent should not have tools'", "The tool is given to the workers", "Nothing changes"], 1,
+     "Checked on CrewAI 1.15. The PDF's example no longer works: managers only delegate."),
+    ("What does allow_delegation=True do?",
+     ["Forces the agent to ask coworkers", "Gives the agent two tools: delegate work to a coworker, and ask a coworker a question", "Makes it the manager", "Turns on memory"], 1,
+     "It makes asking possible, not required: the model decides."),
 ]
 
 
 def page_review():
-    st.header("10 · Review, quiz & cheat sheet")
+    st.header("13 · Review, quiz & cheat sheet")
     st.subheader("🧠 Quiz")
     with st.form("quiz6"):
         answers = [st.radio("**%d. %s**" % (i + 1, q), opts, index=None, key="q6_%d" % i) for i, (q, opts, c, w) in enumerate(QUIZ)]
@@ -611,12 +1128,16 @@ def page_review():
         st.metric("Score", "%d / %d" % (score, len(QUIZ)))
     st.subheader("📝 Homework map")
     table_show([
-        {"#": "HW1", "Level": "Easy", "Task": "Add a 'reschedule' question to the desk: which agent owns it, and do the three designs still answer it?", "Try it": "Pages 2 to 5 (the policy facts include a reschedule rule)"},
-        {"#": "HW2", "Level": "Medium", "Task": "Make the decentralized desk loop-proof: what do you change besides the hop limit?", "Try it": "Page 3 (General agent forwards + hop limit)"},
-        {"#": "HW3", "Level": "Medium", "Task": "Build the fallback that lets the hybrid desk survive a dead orchestrator. What new risk does it add?", "Try it": "Page 5 (untick the fallback)"},
-        {"#": "HW4", "Level": "Easy", "Task": "Rewrite the crew for a trip planner: a researcher and an itinerary writer", "Try it": "Page 7 (edit roles, goals, tasks)"},
-        {"#": "HW5", "Level": "Medium", "Task": "Explain why removing context=[task1] causes no error, and how you would detect it", "Try it": "Page 8"},
-        {"#": "HW6", "Level": "Hard", "Task": "Add a reviewer task and a manager_agent with a check tool: where does the extra call count come from?", "Try it": "Page 9 (cost table)"},
+        {"#": "6A HW1", "Level": "Easy", "Task": "A fourth worker: add a weather expert (get_weather_forecast) to the centralized desk. What changes: the worker, its ask_ function, the routing rules? Did any other worker change?", "Try it": "Page 3, Lab B (agents as tools)"},
+        {"#": "6A HW2", "Level": "Easy", "Task": "Step limits: run the multi-part message with limits 4, 6, 9 and 12. When did Gemini call the experts together, and when one at a time?", "Try it": "Page 3, Lab B; page 1, Lab 3"},
+        {"#": "6A HW3", "Level": "Medium", "Task": "Cheaper decisions: could a keyword check skip the obvious 'is this mine?' calls? Careful: 'stays' also matches 'homestays' in a cancellation question.", "Try it": "Page 4, Lab B (try 'cancellation policy for homestays')"},
+        {"#": "6A HW4", "Level": "Medium", "Task": "Approach 3: each expert answers only its part and passes the rest on. Does it answer all three parts? How many calls versus the hybrid desk?", "Try it": "Page 4, Lab B (relay)"},
+        {"#": "6B Ex1", "Level": "Easy", "Task": "Add the editor: a third agent and task that polishes the blog post. Which context does it need?", "Try it": "Page 9 (code) and page 10"},
+        {"#": "6B Ex2", "Level": "Easy", "Task": "Change a personality: give the writer a different backstory (a poet? a stand-up comic?) and compare", "Try it": "Page 9 (backstory field)"},
+        {"#": "6B Ex3", "Level": "Medium", "Task": "Assigned vs unassigned: add agent=writer to the welcome task. What changed in the log? Was the manager worth its calls?", "Try it": "Page 11 (assign checkbox)"},
+        {"#": "6B Ex4", "Level": "Medium", "Task": "Is the coworker question worth it? Set allow_delegation=False. Does the blurb change? How would you know a check was skipped?", "Try it": "Page 12"},
+        {"#": "6B Ex5", "Level": "Hard", "Task": "Federated teams: two crews (destination; packing), each returning three '- ' lines, combined in plain Python", "Try it": "Page 12 (federated code)"},
+        {"#": "PDF HW", "Level": "Medium", "Task": "Make the decentralized desk loop-proof and give the hybrid desk a fallback for a dead orchestrator. What new risks appear?", "Try it": "Pages 4 and 6 (Lab A)"},
     ])
     st.subheader("⚡ Quick reference")
     table_show([
@@ -626,9 +1147,19 @@ def page_review():
         {"Idea": "Decentralized desk", "One line": "Peers forward; resilient; more chatter; loops need a hop limit and a fallback"},
         {"Idea": "Hybrid desk", "One line": "Route once, then peers ask each other; efficient; survives the boss only if you build the fallback"},
         {"Idea": "LangChain", "One line": "The parts: models, tools, memory, chains. You do the coordination."},
+        {"Idea": "One agent (LangChain 1.x)", "One line": "create_agent(model=llm, tools=[...], system_prompt=\"...\"); answer = result[\"messages\"][-1].text"},
+        {"Idea": "Memory (LangChain 1.x)", "One line": "Keep the messages in a list and send the whole list each turn"},
+        {"Idea": "Agents as tools", "One line": "A function that calls ask(other_agent, question), given to the boss as a tool"},
+        {"Idea": "Step limit", "One line": "config={\"recursion_limit\": N}: one step per model call and per round of tool runs; stops with an error"},
+        {"Idea": "Structured output", "One line": "llm.with_structured_output(schema).invoke(prompt) returns a dictionary"},
+        {"Idea": "Money in code", "One line": "A tool like calculate_refund, never the model's arithmetic"},
         {"Idea": "CrewAI", "One line": "A team framework: Crew, Agent (role, goal, backstory), Task (description, expected_output, context), Process"},
         {"Idea": "Sequential", "One line": "Fixed order; each task's output feeds the next through context"},
         {"Idea": "Hierarchical", "One line": "A manager delegates and (if it has a check) verifies; needs manager_llm or manager_agent"},
+        {"Idea": "Run a crew (notebook)", "One line": "result = await crew.kickoff_async(inputs={\"topic\": \"...\"}); result.raw; result.tasks_output"},
+        {"Idea": "CrewAI tool", "One line": "@tool(\"Name\") above a function with a docstring"},
+        {"Idea": "Agents asking each other", "One line": "allow_delegation=True (adds 'Delegate work to coworker' and 'Ask question to coworker')"},
+        {"Idea": "CrewAI safety settings", "One line": "max_rpm=4; CREWAI_TRACING_ENABLED=\"false\"; pip install \"crewai[google-genai]\""},
         {"Idea": "Cost", "One line": "Every extra agent, manager or check is more model calls"},
     ])
     st.subheader("What the session concludes")
@@ -660,7 +1191,7 @@ def sidebar():
     b = get_backend()
     if st.session_state.get("mode", "").startswith("Live"):
         if b.live:
-            st.sidebar.success("Live: connected to Gemini (pages 8 and 9 use it)")
+            st.sidebar.success("Live: connected to Gemini (pages 10 and 11 use it)")
         else:
             st.sidebar.warning(b.error or "Paste a key to go live. Demo mode meanwhile.")
     else:
@@ -670,9 +1201,9 @@ def sidebar():
 def main():
     sidebar()
     page = st.session_state.get("nav", PAGES[0])
-    {PAGES[0]: page_home, PAGES[1]: page_react, PAGES[2]: page_central, PAGES[3]: page_decentral, PAGES[4]: page_hybrid,
-     PAGES[5]: page_compare, PAGES[6]: page_framework, PAGES[7]: page_blocks, PAGES[8]: page_sequential, PAGES[9]: page_hierarchical,
-     PAGES[10]: page_review}[page]()
+    {PAGES[0]: page_home, PAGES[1]: page_how_langchain, PAGES[2]: page_react, PAGES[3]: page_central, PAGES[4]: page_decentral,
+     PAGES[5]: page_hybrid, PAGES[6]: page_compare, PAGES[7]: page_framework, PAGES[8]: page_how_crewai, PAGES[9]: page_blocks,
+     PAGES[10]: page_sequential, PAGES[11]: page_hierarchical, PAGES[12]: page_delegation, PAGES[13]: page_review}[page]()
 
 
 main()

@@ -1,0 +1,145 @@
+{
+ "get_weather_forecast": {
+  "code": "def get_weather_forecast(place: str) -> str:\n    \"\"\"Get the weather forecast for the next 7 days for a town, for example Manali.\n\n    Args:\n        place: The town or city.\n    \"\"\"\n    found = requests.get(\"https://geocoding-api.open-meteo.com/v1/search\", params={\"name\": place, \"count\": 1}).json()\n    if \"results\" not in found:\n        return f\"Could not find {place}.\"\n    town = found[\"results\"][0]\n    forecast = requests.get(\"https://api.open-meteo.com/v1/forecast\", params={\n        \"latitude\": town[\"latitude\"], \"longitude\": town[\"longitude\"], \"timezone\": \"auto\",\n        \"daily\": \"temperature_2m_min,temperature_2m_max\"}).json()[\"daily\"]\n    lines = []\n    for day in range(len(forecast[\"time\"])):\n        lines.append(f\"{forecast['time'][day]}: {forecast['temperature_2m_min'][day]} to {forecast['temperature_2m_max'][day]} C\")\n    return f\"Forecast for {town['name']}: \" + \"; \".join(lines)",
+  "schema": {
+   "name": "get_weather_forecast",
+   "description": "Get the weather forecast for the next 7 days for a town, for example Manali.",
+   "parameters": {
+    "properties": {
+     "place": {
+      "description": "The town or city.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "place"
+    ],
+    "type": "object"
+   }
+  }
+ },
+ "search_travel_guide": {
+  "code": "def search_travel_guide(place: str) -> str:\n    \"\"\"Read the Wikivoyage travel guide for a place: what to see, do and eat.\n\n    Args:\n        place: The name of the place, for example Old Manali.\n    \"\"\"\n    response = requests.get(\"https://en.wikivoyage.org/w/api.php\",\n                            params={\"action\": \"query\", \"prop\": \"extracts\", \"explaintext\": 1,\n                                    \"redirects\": 1, \"titles\": place, \"format\": \"json\"},\n                            headers={\"User-Agent\": \"GenAI-course-notebook/1.0\"})\n    pages = response.json()[\"query\"][\"pages\"]\n    for page_id in pages:\n        if \"extract\" in pages[page_id]:\n            return pages[page_id][\"extract\"][:3000]\n    return f\"No guide found for {place}.\"",
+  "schema": {
+   "name": "search_travel_guide",
+   "description": "Read the Wikivoyage travel guide for a place: what to see, do and eat.",
+   "parameters": {
+    "properties": {
+     "place": {
+      "description": "The name of the place, for example Old Manali.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "place"
+    ],
+    "type": "object"
+   }
+  }
+ },
+ "search_stays": {
+  "code": "def search_stays(query: str) -> str:\n    \"\"\"Search DilSeTrips stays by place or stay name. Returns prices per night.\n\n    Args:\n        query: A place (e.g. Old Manali), a stay name, or 'all'.\n    \"\"\"\n    lines = []\n    for name in stays:\n        stay = stays[name]\n        if query.lower() == \"all\" or query.lower() in name.lower() or query.lower() in stay[\"place\"].lower():\n            lines.append(f\"{name} ({stay['place']}): Rs {stay['price_per_night']} per night, {stay['notes']}\")\n    if len(lines) == 0:\n        return \"No match. Our stays are: \" + \", \".join(stays.keys())\n    return \"\\n\".join(lines)",
+  "schema": {
+   "name": "search_stays",
+   "description": "Search DilSeTrips stays by place or stay name. Returns prices per night.",
+   "parameters": {
+    "properties": {
+     "query": {
+      "description": "A place (e.g. Old Manali), a stay name, or 'all'.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "query"
+    ],
+    "type": "object"
+   }
+  }
+ },
+ "look_up_policy": {
+  "code": "def look_up_policy(topic: str) -> str:\n    \"\"\"Look up a DilSeTrips policy: cancellation or changes.\n\n    Args:\n        topic: The policy topic, for example cancellation.\n    \"\"\"\n    for name in policies:\n        if name in topic.lower():\n            return policies[name]\n    return \"Policies we have: \" + \", \".join(policies.keys())",
+  "schema": {
+   "name": "look_up_policy",
+   "description": "Look up a DilSeTrips policy: cancellation or changes.",
+   "parameters": {
+    "properties": {
+     "topic": {
+      "description": "The policy topic, for example cancellation.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "topic"
+    ],
+    "type": "object"
+   }
+  }
+ },
+ "calculate_refund": {
+  "code": "def calculate_refund(price_per_night: int, nights: int, days_before_check_in: int) -> str:\n    \"\"\"Calculate a cancellation refund exactly, using DilSeTrips' cancellation policy.\n\n    Args:\n        price_per_night: Price per night in rupees.\n        nights: Number of nights booked.\n        days_before_check_in: How many days before check-in they cancel.\n    \"\"\"\n    paid = price_per_night * nights\n    if days_before_check_in >= 7:\n        percent = 80\n    elif days_before_check_in >= 2:\n        percent = 50\n    else:\n        percent = 0\n    refund = paid * percent / 100\n    return f\"Paid Rs {paid}; cancelling {days_before_check_in} days before gives {percent}% back: Rs {refund:.0f}\"",
+  "schema": {
+   "name": "calculate_refund",
+   "description": "Calculate a cancellation refund exactly, using DilSeTrips' cancellation policy.",
+   "parameters": {
+    "properties": {
+     "price_per_night": {
+      "description": "Price per night in rupees.",
+      "type": "integer"
+     },
+     "nights": {
+      "description": "Number of nights booked.",
+      "type": "integer"
+     },
+     "days_before_check_in": {
+      "description": "How many days before check-in they cancel.",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "price_per_night",
+     "nights",
+     "days_before_check_in"
+    ],
+    "type": "object"
+   }
+  }
+ },
+ "ask_stays_peer": {
+  "code": "def ask_stays_peer(question: str) -> str:\n    \"\"\"Ask the stays expert directly for a stay's price or details.\n\n    Args:\n        question: What you need to know, e.g. 'price per night of River Bend Homestay'.\n    \"\"\"\n    print(f\"      policy expert -> stays expert: {question}\")\n    return ask(stays_expert, question, name=\"stays expert\")",
+  "schema": {
+   "name": "ask_stays_peer",
+   "description": "Ask the stays expert directly for a stay's price or details.",
+   "parameters": {
+    "properties": {
+     "question": {
+      "description": "What you need to know, e.g. 'price per night of River Bend Homestay'.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "question"
+    ],
+    "type": "object"
+   }
+  }
+ },
+ "ask_stays_expert": {
+  "code": "def ask_stays_expert(question: str) -> str:\n    \"\"\"Ask the stays expert about stays, places and prices per night.\n\n    Args:\n        question: The part of the customer's message about stays.\n    \"\"\"\n    print(f\"   boss -> stays expert: {question}\")\n    return ask(stays_expert, question, name=\"stays expert\")",
+  "schema": {
+   "name": "ask_stays_expert",
+   "description": "Ask the stays expert about stays, places and prices per night.",
+   "parameters": {
+    "properties": {
+     "question": {
+      "description": "The part of the customer's message about stays.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "question"
+    ],
+    "type": "object"
+   }
+  }
+ }
+}

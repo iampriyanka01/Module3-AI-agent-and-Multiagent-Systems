@@ -7,6 +7,8 @@ It contains:
   * a tiny ReAct agent with a pretend search tool and a conversation memory,
   * a "mini CrewAI": Agent, Task, Crew, Process.sequential and Process.hierarchical, written from scratch to show
     what the real framework does for you. It is a teaching model of the ideas in the notebook, NOT the CrewAI library.
+    Behaviour checked against CrewAI 1.15: a hierarchical crew needs manager_llm or manager_agent, and a manager agent
+    with tools makes kickoff() fail ("Manager agent should not have tools").
 All facts, prices and search results are PRETEND data written for this exercise, never live information.
 """
 from __future__ import annotations
@@ -499,7 +501,7 @@ def do_task(task: dict, agent: dict, topic: str, context_outputs: list, sloppy: 
 
 
 def run_crew(cfg: dict, inputs: dict, process: str = "sequential", manager: dict | None = None, sloppy: bool = False,
-             use_context: bool = True, backend: Backend | None = None) -> dict:
+             use_context: bool = True, backend: Backend | None = None, assigned: bool = False) -> dict:
     """kickoff(): run the crew. Returns outputs, a message log, the model-call count and any error the framework would raise."""
     log = Log()
     res = {"error": "", "outputs": {}, "final": "", "log": log, "calls": 0, "checks": [], "reworked": []}
@@ -509,6 +511,11 @@ def run_crew(cfg: dict, inputs: dict, process: str = "sequential", manager: dict
         return res
     if process == "hierarchical" and not manager:
         res["error"] = "A hierarchical process needs a manager: give the crew a manager_llm or a manager_agent."
+        return res
+    if process == "hierarchical" and manager.get("kind") == "agent" and manager.get("has_tools"):
+        # Checked on CrewAI 1.15: Crew(...) is created, then kickoff() raises this. The PDF's example gives the manager tools;
+        # current CrewAI does not allow it. A manager only delegates; its own tools are the two delegation tools CrewAI adds.
+        res["error"] = "Exception: Manager agent should not have tools. (CrewAI refuses to start. Give the tools to the workers instead.)"
         return res
     order = [t["id"] for t in cfg["tasks"]]
     for i, t in enumerate(cfg["tasks"]):
@@ -527,9 +534,13 @@ def run_crew(cfg: dict, inputs: dict, process: str = "sequential", manager: dict
         log.send("manager", "manager", "plan", "split the work into %d task(s) and assign each to the best-fitting agent" % len(cfg["tasks"]))
     for t in cfg["tasks"]:
         if process == "hierarchical":
-            want = skill_of_task(t)
-            owner = next((k for k, a in cfg["agents"].items() if skill_of_agent(a) == want), t["agent"])
-            log.send("manager", owner, "delegate", fill(t["description"], inputs))
+            if assigned:                              # the task names its agent: the manager has no choice, it only passes it on
+                owner = t["agent"]
+                log.send("manager", owner, "delegate (no choice: task is assigned)", fill(t["description"], inputs))
+            else:
+                want = skill_of_task(t)
+                owner = next((k for k, a in cfg["agents"].items() if skill_of_agent(a) == want), t["agent"])
+                log.send("manager", owner, "delegate_work_to_coworker", fill(t["description"], inputs))
         else:
             owner = t["agent"]
             log.send("crew", owner, "task", fill(t["description"], inputs))
@@ -538,7 +549,7 @@ def run_crew(cfg: dict, inputs: dict, process: str = "sequential", manager: dict
         log.call()
         out = do_task({**t, "description": fill(t["description"], inputs)}, agent, topic, ctx, sloppy, backend)
         log.send(owner, "manager" if process == "hierarchical" else "crew", "result", out.replace("\n", " ")[:160])
-        if process == "hierarchical" and manager and manager.get("kind") == "agent" and manager.get("has_tools"):
+        if process == "hierarchical" and manager and manager.get("kind") == "agent" and manager.get("checks"):
             log.call()
             ok, why = meets_expected(t, out)
             res["checks"].append({"task": t["id"], "ok": ok, "why": why})
@@ -555,7 +566,7 @@ def run_crew(cfg: dict, inputs: dict, process: str = "sequential", manager: dict
         elif process == "hierarchical":
             ok, why = meets_expected(t, out)
             res["checks"].append({"task": t["id"], "ok": ok, "why": "not checked by the manager (" + why + ")"})
-            log.send("manager", owner, "review", "accepted without checking")
+            log.send("manager", owner, "review", "accepted without checking (no instruction to check)")
         outputs[t["id"]] = out
     if process == "hierarchical":
         log.call()
@@ -567,21 +578,36 @@ def run_crew(cfg: dict, inputs: dict, process: str = "sequential", manager: dict
 
 def crew_code(cfg: dict, inputs: dict, process: str = "sequential", manager: dict | None = None) -> str:
     """The CrewAI code (as in the notebook) that this configuration corresponds to."""
-    lines = ["from crewai import Agent, Task, Crew, Process, LLM", "", 'llm = LLM(model="gemini/gemini-2.5-flash", temperature=0.1)', ""]
+    lines = ["from crewai import Agent, Task, Crew, Process, LLM", "", 'llm = LLM(model="gemini/gemini-3.5-flash-lite", temperature=0.1)', ""]
+    if process == "hierarchical" and manager and manager.get("kind") == "agent":
+        lines += ["manager_agent = Agent(                 # a full agent: role, goal, backstory. NO tools (CrewAI refuses)",
+                  '    role="Editor-in-chief",',
+                  '    goal="Deliver work that meets every task\'s expected_output. Send back anything that does not.",' if manager.get("checks") else
+                  '    goal="Get the team to finish the tasks.",',
+                  '    backstory="You check each result against its expected_output before accepting it.",' if manager.get("checks") else
+                  '    backstory="You delegate and trust your team.",',
+                  "    llm=llm,", "    allow_delegation=True,", ")", ""]
     for k, a in cfg["agents"].items():
         lines += ["%s_agent = Agent(" % k, "    role=%r," % a["role"], "    goal=%r," % a["goal"], "    backstory=%r," % a["backstory"], "    llm=llm,", "    verbose=True,", ")", ""]
     for t in cfg["tasks"]:
-        lines += ["%s = Task(" % t["id"], "    description=%r," % t["description"], "    expected_output=%r," % t["expected_output"], "    agent=%s_agent," % t["agent"]]
+        lines += ["%s = Task(" % t["id"], "    description=%r," % t["description"], "    expected_output=%r," % t["expected_output"]]
+        if process != "hierarchical" or manager and manager.get("assigned"):
+            lines.append("    agent=%s_agent," % t["agent"])
+        else:
+            lines.append("    # no agent=: the manager decides who does this task")
         if t["context"]:
             lines.append("    context=[%s]," % ", ".join(t["context"]))
         lines += [")", ""]
     lines += ["crew = Crew(", "    agents=[%s]," % ", ".join(k + "_agent" for k in cfg["agents"]), "    tasks=[%s]," % ", ".join(t["id"] for t in cfg["tasks"])]
     if process == "hierarchical":
         lines.append("    process=Process.hierarchical,")
-        lines.append("    manager_agent=manager_agent,   # a full Agent with role, goal and tools" if manager and manager.get("kind") == "agent" else '    manager_llm="gemini/gemini-2.5-flash",   # just a model, no role or tools')
+        lines.append("    manager_agent=manager_agent,   # your own manager: role, goal, backstory (no tools)" if manager and manager.get("kind") == "agent"
+                     else "    manager_llm=llm,               # CrewAI builds its default 'Crew Manager' agent around this model")
     else:
         lines.append("    process=Process.sequential,")
-    lines += ["    verbose=True,", ")", "", "crew.kickoff(inputs=%r)" % inputs]
+    lines += ["    max_rpm=4,                       # at most 4 model calls a minute (free tier)", "    verbose=True,", ")", "",
+              "result = crew.kickoff(inputs=%r)       # in a notebook: result = await crew.kickoff_async(inputs=...)" % inputs,
+              "for task_output in result.tasks_output:", "    print(task_output.agent, task_output.raw)"]
     return "\n".join(lines)
 
 
@@ -589,7 +615,7 @@ def process_costs(cfg: dict, inputs: dict, sloppy: bool) -> list:
     rows = []
     for label, proc, mgr in (("Sequential (no manager)", "sequential", None),
                              ("Hierarchical, manager_llm", "hierarchical", {"kind": "llm"}),
-                             ("Hierarchical, manager_agent with a check tool", "hierarchical", {"kind": "agent", "has_tools": True})):
+                             ("Hierarchical, manager_agent told to check", "hierarchical", {"kind": "agent", "checks": True})):
         r = run_crew(cfg, inputs, proc, mgr, sloppy)
         if r["error"]:
             rows.append({"Process": label, "Model calls": "-", "Facts the writer received": "-", "Short research caught?": r["error"][:60]})
@@ -614,8 +640,156 @@ FRAMEWORK_TABLE = [
 ]
 
 PATTERN_TABLE = [
-    {"Pattern (how agents interact)": "Manager / worker", "Description": "A central agent delegates to task-specific workers", "Best architecture": "Centralized or hybrid", "Why it fits": "Clear hierarchy and control", "In this session": "Page 2; CrewAI hierarchical process (page 9)"},
-    {"Pattern (how agents interact)": "Peer / swarm", "Description": "Agents coordinate with local rules", "Best architecture": "Decentralized", "Why it fits": "Fault-tolerant and scalable", "In this session": "Page 3"},
-    {"Pattern (how agents interact)": "Pipeline", "Description": "Sequential hand-off of tasks", "Best architecture": "Centralized or hybrid", "Why it fits": "Needs orchestration to enforce the order", "In this session": "CrewAI sequential process (page 8)"},
-    {"Pattern (how agents interact)": "Specialists / federated teams", "Description": "Agents with deep domain expertise", "Best architecture": "Hybrid", "Why it fits": "Efficient handling of complex tasks", "In this session": "Page 4"},
+    {"Pattern (how agents interact)": "Manager / worker", "Description": "A central agent delegates to task-specific workers", "Best architecture": "Centralized or hybrid", "Why it fits": "Clear hierarchy and control", "In this session": "Page 3; CrewAI hierarchical process (page 11)"},
+    {"Pattern (how agents interact)": "Peer / swarm", "Description": "Agents coordinate with local rules", "Best architecture": "Decentralized", "Why it fits": "Fault-tolerant and scalable", "In this session": "Page 4"},
+    {"Pattern (how agents interact)": "Pipeline", "Description": "Sequential hand-off of tasks", "Best architecture": "Centralized or hybrid", "Why it fits": "Needs orchestration to enforce the order", "In this session": "CrewAI sequential process (page 10)"},
+    {"Pattern (how agents interact)": "Specialists / federated teams", "Description": "Agents with deep domain expertise", "Best architecture": "Hybrid", "Why it fits": "Efficient handling of complex tasks", "In this session": "Page 5; CrewAI allow_delegation (page 12)"},
+]
+
+
+# ----------------------------------------------------------------------------------------
+# Part 5: what CrewAI really sends to the model (recorded), and agents asking each other
+# ----------------------------------------------------------------------------------------
+# crewai_recordings.json was recorded by running the REAL CrewAI library (version 1.15.28) with a stand-in model that
+# saves every message CrewAI sends and replies with a fixed script. So the prompts are exactly CrewAI's own; the replies
+# are scripted. With Gemini, CrewAI may pass tools through Gemini's native function calling, so the tool list can be
+# sent separately instead of inside the system prompt; the role, goal, backstory, task and context parts are the same.
+import json as _json
+from pathlib import Path as _Path
+
+try:
+    RECORDINGS = _json.loads((_Path(__file__).resolve().parent / "crewai_recordings.json").read_text(encoding="utf-8"))
+except Exception:
+    RECORDINGS = {}
+
+RECORDED = {
+    "single_agent": {
+        "title": "One agent with a tool:  agent.kickoff(\"Three things a quiet couple should not miss in Old Manali...\")",
+        "code": '''@tool("Travel guide")
+def search_travel_guide(place: str) -> str:
+    """Read the Wikivoyage travel guide for a place, e.g. Old Manali. Returns what to see, do and eat there."""
+    ...
+
+local_guide = Agent(
+    role="Local travel guide",
+    goal="Give couples accurate, specific tips about places, based on the travel guide.",
+    backstory="You never invent places. You always check the travel guide first.",
+    tools=[search_travel_guide], llm=llm,
+)
+result = await local_guide.kickoff_async("Three things a quiet couple should not miss in Old Manali. Under 80 words.")
+print(result.raw)''',
+        "after": ["CrewAI reads 'Action: Travel guide' in the reply, runs YOUR function search_travel_guide(place='Old Manali'), "
+                  "and sends the result back as 'Observation:' (see call 2).",
+                  "The reply contains 'Final Answer:', so the loop stops. kickoff returns an object; .raw is the answer text."],
+    },
+    "sequential": {
+        "title": "A two-task pipeline:  crew.kickoff(inputs={'topic': 'a quiet weekend in Old Manali'})",
+        "code": '''research_task = Task(description="Find 3 to 5 specific facts about {topic}, using the travel guide.",
+                     expected_output="A bullet list of 3 to 5 facts.", agent=researcher)
+writing_task = Task(description="Write a blog post of about 100 words about {topic}, using only the facts from the research.",
+                    expected_output="A blog post of about 100 words.", agent=writer,
+                    context=[research_task])          # the writer reads the researcher's result first
+blog_crew = Crew(agents=[researcher, writer], tasks=[research_task, writing_task], process=Process.sequential)
+result = await blog_crew.kickoff_async(inputs={"topic": "a quiet weekend in Old Manali"})''',
+        "after": ["CrewAI stores this as research_task's output. Because writing_task has context=[research_task], it pastes this "
+                  "text into the writer's prompt under \"This is the context you're working with\" (see call 2).",
+                  "This was the last task, so its text becomes result.raw. result.tasks_output holds both tasks' outputs."],
+    },
+    "hierarchical": {
+        "title": "A manager decides:  Process.hierarchical, manager_llm=llm, one task with NO agent",
+        "code": '''welcome_task = Task(
+    description=("Write a short welcome note for a couple visiting {place} next week: "
+                 "3 facts about the place from the travel guide, then one warm paragraph."),
+    expected_output="A welcome note: 3 facts, then one paragraph. Under 120 words.",
+    # no agent= here: the manager decides who does this
+)
+managed_crew = Crew(agents=[researcher, writer], tasks=[welcome_task],
+                    process=Process.hierarchical, manager_llm=llm)
+result = await managed_crew.kickoff_async(inputs={"place": "Old Manali"})''',
+        "after": ["The manager is an agent CrewAI built for you ('Crew Manager'). Its only tools are delegate_work_to_coworker and "
+                  "ask_question_to_coworker. It chose to delegate to the Research specialist.",
+                  "CrewAI runs the coworker on the delegated task. Its answer goes back to the manager as the tool's Observation.",
+                  "The manager delegates again, this time to the Travel writer, passing the facts in the context.",
+                  "The writer's note goes back to the manager.",
+                  "The manager gives the Final Answer: the crew's result."],
+    },
+    "delegation": {
+        "title": "A worker asks a coworker:  allow_delegation=True on the copywriter",
+        "code": '''fact_checker = Agent(role="Fact checker", goal="Answer questions about places accurately, using the travel guide.",
+                     backstory="You check every claim against the travel guide.", tools=[search_travel_guide], llm=llm)
+copywriter = Agent(role="Copywriter", goal="Write short, specific homepage blurbs for DilSeTrips destinations.",
+                   backstory="You never state a fact you haven't checked. When unsure, you ask the fact checker.",
+                   llm=llm, allow_delegation=True)            # lets the copywriter ask its coworkers for help
+blurb_task = Task(description="Write a two-sentence homepage blurb about Old Manali for couples. "
+                              "Mention two specific places, checked with the fact checker.",
+                  expected_output="A two-sentence blurb.", agent=copywriter)
+result = await Crew(agents=[copywriter, fact_checker], tasks=[blurb_task]).kickoff_async()''',
+        "after": ["allow_delegation=True gave the copywriter two extra tools (look at its system prompt). It chose "
+                  "'Ask question to coworker' with the Fact checker.",
+                  "CrewAI runs the Fact checker on the question. It has the travel guide tool and uses it.",
+                  "The Fact checker answers. Its answer goes back to the copywriter as the Observation.",
+                  "The copywriter writes the blurb using the checked places: the Final Answer."],
+    },
+}
+
+PROMPT_PARTS = [
+    {"You write": "role=\"Travel writer\"", "CrewAI puts it here": "System prompt: \"You are Travel writer. ...\""},
+    {"You write": "backstory=\"You write for couples...\"", "CrewAI puts it here": "System prompt, right after the role"},
+    {"You write": "goal=\"Write short, warm blog posts...\"", "CrewAI puts it here": "System prompt: \"Your personal goal is: ...\""},
+    {"You write": "tools=[...] (or allow_delegation=True)", "CrewAI puts it here": "System prompt: tool names, arguments and descriptions, plus the Thought / Action / Observation format"},
+    {"You write": "Task description (with {topic} filled in)", "CrewAI puts it here": "User message: \"Current Task: ...\""},
+    {"You write": "expected_output", "CrewAI puts it here": "User message: \"This is the expected criteria for your final answer: ...\""},
+    {"You write": "context=[research_task]", "CrewAI puts it here": "User message: \"This is the context you're working with:\" + that task's output"},
+]
+
+
+def recorded_calls(key: str) -> list:
+    """The recorded model calls of one scenario: who was called, every message CrewAI sent, the scripted reply."""
+    rec = RECORDINGS.get(key, {}).get("record", [])
+    after = RECORDED.get(key, {}).get("after", [])
+    out = []
+    for i, r in enumerate(rec):
+        out.append({"n": i + 1, "agent": r.get("agent") or "?", "messages": r.get("messages", []), "reply": r.get("reply", ""),
+                    "after": after[i] if i < len(after) else ""})
+    return out
+
+
+def delegation(allow: bool, confident: bool) -> dict:
+    """Step 6 of notebook 6B: a copywriter (no tools) and a fact checker (travel guide). With allow_delegation=True the
+    copywriter MAY ask; whether it does is the model's choice ('confident' = it skips the check)."""
+    log = Log()
+    log.send("crew", "Copywriter", "task", "Write a two-sentence homepage blurb about Old Manali for couples. Mention two specific places.")
+    if allow and not confident:
+        log.call()
+        log.send("Copywriter", "Fact checker", "Ask question to coworker", "Name two specific places in Old Manali a couple would enjoy.", direct=True)
+        log.call()
+        log.send("Fact checker", "travel guide tool", "Action: travel_guide", "{\"place\": \"Old Manali\"}")
+        log.call()
+        log.send("Fact checker", "Copywriter", "answer (Observation)", "Manu Temple and the riverside cafes.", direct=True)
+        log.call()
+        blurb = ("Old Manali is made for slow mornings in riverside cafes. Walk up to the Manu Temple together before the "
+                 "day-trippers arrive.")
+        checked = True
+    else:
+        log.call()
+        blurb = ("Old Manali is perfect for couples: sip coffee at the famous Sunset Point Cafe and take the cable car to "
+                 "Snow Peak View.")
+        checked = False
+    log.send("Copywriter", "crew", "Final Answer", blurb)
+    return {"log": log, "calls": log.calls, "blurb": blurb, "checked": checked}
+
+
+PATTERNS_IN_CREWAI = [
+    {"Session 5 pattern": "Pipeline", "In CrewAI": "Process.sequential and context=[...]", "Where": "Page 10 (sequential)"},
+    {"Session 5 pattern": "Manager / worker", "In CrewAI": "Process.hierarchical, tasks left unassigned", "Where": "Page 11 (hierarchical)"},
+    {"Session 5 pattern": "Peer collaboration", "In CrewAI": "allow_delegation=True", "Where": "Page 12 (this page)"},
+    {"Session 5 pattern": "Federated teams", "In CrewAI": "One crew per team, results combined in your code", "Where": "Page 12, exercise 5"},
+]
+
+CREWAI_VS_LANGCHAIN_6B = [
+    {"": "Passing results between agents", "LangChain (notebook 6A)": "Your code", "CrewAI (notebook 6B)": "context=[...]"},
+    {"": "Deciding who does what", "LangChain (notebook 6A)": "Your router and rules", "CrewAI (notebook 6B)": "A process setting, or a manager"},
+    {"": "Agents asking each other", "LangChain (notebook 6A)": "Your peer tools", "CrewAI (notebook 6B)": "allow_delegation=True"},
+    {"": "Seeing every decision", "LangChain (notebook 6A)": "Yes: you wrote every prompt", "CrewAI (notebook 6B)": "Partly: CrewAI writes the teamwork prompts"},
+    {"": "Control over cost", "LangChain (notebook 6A)": "Exact", "CrewAI (notebook 6B)": "Less: managers and coworker questions add calls"},
 ]
