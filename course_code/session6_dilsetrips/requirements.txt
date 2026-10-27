@@ -1,0 +1,8 @@
+# Everything DilSeTrips needs. The <4.4 keeps it compatible with the Session 6 notebooks' environment.
+langchain>=1.0
+langchain-google-genai>=4.0,<4.4
+langchain-pinecone>=0.2
+pinecone>=7.0
+python-dotenv
+pyyaml
+requests

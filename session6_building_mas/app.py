@@ -903,7 +903,7 @@ def page_sequential():
     st.caption("Using the agents and tasks you wrote on page 9 (or the notebook's defaults if you skipped it). Topic: **%s**" % inputs["topic"])
     st.subheader("Lab · kickoff() and break it")
     c1, c2, c3 = st.columns(3)
-    use_ctx = c1.checkbox("Task 2 uses context=[task1]", True, key="s6_ctx")
+    use_ctx = c1.checkbox("Task 2 uses context=[task1]", True, key="s6_ctx", help="Unticked = context=[] (an explicit empty list). Leaving context out entirely is different: in CrewAI 1.15 a sequential task with no context parameter receives ALL earlier outputs.")
     wrong = c2.checkbox("List the writer's task FIRST", False, key="s6_wrongorder")
     typo = c3.checkbox("Mistype the input key ('topics')", False, key="s6_typo")
     predict("untick the context box. The writer still runs. What does it write about?")
@@ -926,6 +926,7 @@ def page_sequential():
         if not use_ctx:
             st.error("The writer ran with **no research**. It still produced something: in this demo a refusal, but a real model would likely invent facts and sound confident. "
                      "The order was right; the hand-off was missing. That is what `context` is for.")
+            st.caption("🧪 Checked on CrewAI 1.15.30: this happens with `context=[]`. If you simply leave `context` out of a sequential task, CrewAI passes it ALL earlier outputs instead.")
         else:
             st.success("The writer built its summary from the researcher's bullets.")
         badge(b)

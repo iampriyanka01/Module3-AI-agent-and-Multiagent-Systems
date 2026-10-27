@@ -1,0 +1,4 @@
+# Part 1 (building MCP servers with FastMCP 4). Use its OWN virtual environment:
+# FastMCP 4 needs a newer "mcp" library than CrewAI can use.
+fastmcp>=4.0
+ipykernel

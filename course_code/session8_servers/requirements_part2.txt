@@ -1,0 +1,5 @@
+# Part 2 (MCP with CrewAI, and A2A). CrewAI's environment: your Session 6-7 environment already has these.
+crewai[google-genai]>=1.15
+requests
+python-dotenv
+ipykernel
